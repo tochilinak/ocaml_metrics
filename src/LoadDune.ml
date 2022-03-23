@@ -70,7 +70,9 @@ let analyze_dir ~cmt:analyze_cmt ~cmti:analyze_cmti path =
             printf "%s %d\n%!" Caml.__FILE__ Caml.__LINE__;
             Caml.exit 1)
     in
-    List.iter [ m.impl, m.cmt; m.intf, m.cmti ] ~f:(function
+    List.iter
+      [ m.impl, m.cmt; m.intf, m.cmti ]
+      ~f:(function
         | None, None -> ()
         | Some filename, None ->
           Caml.Format.printf "Found ml[i] file '%s' without cmt[i] file\n" filename

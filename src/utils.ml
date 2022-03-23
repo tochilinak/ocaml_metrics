@@ -72,3 +72,8 @@ module Report = struct
     RDJsonl.pp ppf ~filename ~line:loc.Location.loc_start.pos_lnum ~code msg msg_arg
   ;;
 end
+
+let location_str loc =
+  Location.print_loc Format.str_formatter loc;
+  String.drop_prefix (String.drop_suffix (Format.flush_str_formatter ()) 4) 4
+;;

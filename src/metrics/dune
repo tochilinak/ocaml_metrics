@@ -1,8 +1,7 @@
 (library
  (name Metrics)
  (libraries zanuda_core Tast_pattern)
- (modules
-  Function_count)
+ (modules Function_count Structure_item_count Halstead)
  (preprocess
   (pps ppx_inline_test ppxlib.metaquot))
  (inline_tests))

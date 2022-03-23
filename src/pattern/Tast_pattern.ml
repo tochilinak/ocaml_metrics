@@ -315,6 +315,20 @@ end
 
 open Typedtree
 
+let apply = T (fun _ _ x k -> k x)
+
+let const_to_string =
+  let open Asttypes in
+  function
+  | Const_int v -> Int.to_string v
+  | Const_char v -> Printf.sprintf "%C" v
+  | Const_string (v, _, _) -> "\"" ^ v ^ "\""
+  | Const_float v -> v
+  | Const_int32 v -> Int32.to_string v
+  | Const_int64 v -> Int64.to_string v
+  | Const_nativeint v -> Nativeint.to_string v
+;;
+
 let econst (T f0) =
   T
     (fun ctx loc x k ->
@@ -379,6 +393,19 @@ let tpat_any =
         ctx.matched <- ctx.matched + 1;
         k
       | _ -> fail loc "tpat_any")
+;;
+
+let texp_construct_visible_empty (T fconstr_desc) =
+  T
+    (fun ctx loc x k ->
+      match x.exp_desc with
+      | Texp_construct (_, desc, []) ->
+        (match desc.cstr_loc.loc_ghost with
+        | true ->
+          ctx.matched <- ctx.matched + 1;
+          k |> fconstr_desc ctx loc desc
+        | false -> fail loc "texp_construct_visible_empty")
+      | _ -> fail loc "texp_construct_visible_empty")
 ;;
 
 let texp_ident (T fpath) =
@@ -489,12 +516,14 @@ let pat_type =
     (fun ctx _ { pat_type } k ->
       ctx.matched <- ctx.matched + 1;
       k pat_type)
+;;
 
 let exp_type =
   T
     (fun ctx _ { exp_type } k ->
       ctx.matched <- ctx.matched + 1;
       k exp_type)
+;;
 
 let case (T pat) (T guard) (T rhs) =
   T
@@ -506,8 +535,9 @@ let first_case (T fcase) =
   T
     (fun ctx loc lst k ->
       match lst with
-      | x::_ -> fcase ctx loc x k
+      | x :: _ -> fcase ctx loc x k
       | [] -> fail loc "first_case")
+;;
 
 let texp_match (T fexpr) (T fcases) =
   T

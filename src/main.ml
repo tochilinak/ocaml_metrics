@@ -7,7 +7,8 @@ let metrics =
   let open Metrics in
   [ (* * *********************** *)
     (module Function_count : METRIC.GENERAL)
-    (* * *********************** *)
+  ; (module Structure_item_count : METRIC.GENERAL)
+  ; (module Halstead : METRIC.GENERAL) (* * *********************** *)
   ]
 ;;
 
@@ -20,15 +21,16 @@ let typed_on_structure info typedtree =
   build_iterator
     ~f:(fun o -> o.Tast_iterator.structure o)
     ~compose:(fun (module L : METRIC.GENERAL) ->
-        L.reset ();
-        L.run info
-    )
+      L.reset ();
+      L.run info)
     ~init:Tast_iterator.default_iterator
     metrics
     typedtree;
   build_iterator
     ~f:(fun () -> ())
-    ~compose:(fun (module L : METRIC.GENERAL) -> L.collect_result info.source_file)
+    ~compose:(fun (module L : METRIC.GENERAL) () ->
+      List.iter (L.get_result ()) ~f:(fun (str, value) ->
+          CollectedMetrics.add_result (L.metric_id ^ str) info.source_file value))
     ~init:()
     metrics
 ;;
@@ -44,9 +46,8 @@ let with_info filename f =
 ;;
 
 let process_cmt_typedtree filename typedtree =
-  if Config.verbose () then
-    printfn "Analyzing file: %s" filename;
-  (* Format.printf "Typedtree ML:\n%a\n%!" Printtyped.implementation typedtree; *)
+  if Config.verbose () then printfn "Analyzing file: %s" filename;
+  (*Format.printf "Typedtree ML:\n%a\n%!" Printtyped.implementation typedtree;*)
   with_info filename (fun info -> typed_on_structure info typedtree)
 ;;
 

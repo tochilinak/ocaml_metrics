@@ -3,6 +3,6 @@ module type GENERAL = sig
 
   val metric_id : string
   val run : Compile_common.info -> input -> input
-  val collect_result : string -> unit -> unit
+  val get_result : unit -> (string * float) list
   val reset : unit -> unit
 end

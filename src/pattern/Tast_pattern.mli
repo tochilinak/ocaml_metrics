@@ -57,6 +57,7 @@ val map_result : ('a, 'b, 'c) t -> f:('c -> 'd) -> ('a, 'b, 'd) t
 
 open Typedtree
 
+val apply : ('a, 'a -> 'b, 'b) t
 val int : int -> (int, 'a, 'a) t
 val string : string -> (string, 'a, 'a) t
 val lident : (string, 'a, 'b) t -> (Longident.t, 'a, 'b) t
@@ -65,6 +66,7 @@ val path_pident : (Ident.t, 'a, 'b) t -> (Path.t, 'a, 'b) t
 val eint : (int, 'a, 'b) t -> (expression, 'a, 'b) t
 val ebool : (expression, bool -> 'a, 'a) t
 val econst : (Asttypes.constant, 'a, 'b) t -> (expression, 'a, 'b) t
+val const_to_string : Asttypes.constant -> string
 
 [%%if ocaml_version < (4, 11, 0)]
 
@@ -94,6 +96,11 @@ val pident : (string, 'a, 'b) t -> (Path.t, 'a, 'b) t
     texp_ident (path [ "&&" ])  (* WRONG *)
     texp_ident (path [ "Stdlib"; "&&" ])  (* CORRECT *)
 *)
+
+val texp_construct_visible_empty
+  :  (Types.constructor_description, 'a, 'b) t
+  -> (expression, 'a, 'b) t
+
 val texp_ident : (Path.t, 'a, 'b) t -> (expression, 'a, 'b) t
 
 val texp_ident_typ
@@ -123,9 +130,7 @@ val texp_apply_nolabelled
   -> (expression, 'a, 'c) t
 
 val texp_function : (case_val list, 'a, 'b) t -> (expression, 'a, 'b) t
-
 val pat_type : (pattern, Types.type_expr -> 'a, 'a) t
-
 val exp_type : (expression, Types.type_expr -> 'a, 'a) t
 
 val case
