@@ -3,12 +3,18 @@ open Base
 open Zanuda_core
 open Utils
 
-let metrics =
+let function_metrics =
   let open Metrics in
-  [ (* * *********************** *)
+  [
+    (module Halstead : METRIC.GENERAL)
+  ]
+;;
+
+let file_metrics =
+  let open Metrics in
+  [
     (module Function_count : METRIC.GENERAL)
   ; (module Structure_item_count : METRIC.GENERAL)
-  ; (module Halstead : METRIC.GENERAL) (* * *********************** *)
   ]
 ;;
 
@@ -17,22 +23,58 @@ let build_iterator ~init ~compose ~f xs =
   f o
 ;;
 
+let reset_function_metrics () =
+  List.iter function_metrics ~f:(fun (module L : METRIC.GENERAL) -> L.reset ())
+;;
+
+let collect_function_metrics filename func_name =
+  let name = filename ^ ":" ^ func_name in
+  List.iter function_metrics ~f:(fun (module L : METRIC.GENERAL) ->
+    List.iter (L.get_result ()) ~f:(fun (str, value) ->
+      CollectedMetrics.add_result (L.metric_id ^ str) name value))
+;;
+
+let my_iterator filename =
+  let open Typedtree in
+  let get_value_name vb =
+    match vb.vb_pat.pat_desc with
+      | Tpat_var (x, _) -> Ident.name x
+      | _ -> Format.sprintf "<Value on %s>" (short_location_str vb.vb_loc)
+  in
+  let open Tast_iterator in
+  { default_iterator with
+    structure_item =
+      (fun self str_item ->
+        match str_item.str_desc with
+        | Tstr_value (_, list) -> List.iter list ~f:(fun x ->
+              if (empty_loc x.vb_loc) then
+                default_iterator.value_binding self x
+              else
+                (reset_function_metrics ();
+                default_iterator.value_binding self x;
+                collect_function_metrics filename (get_value_name x)))
+        | _ -> default_iterator.structure_item self str_item)
+  }
+;;
+
 let typed_on_structure info typedtree =
+  let open Compile_common in
+  let filename = info.source_file in
   build_iterator
     ~f:(fun o -> o.Tast_iterator.structure o)
     ~compose:(fun (module L : METRIC.GENERAL) ->
       L.reset ();
       L.run info)
-    ~init:Tast_iterator.default_iterator
-    metrics
+    ~init:(my_iterator filename)
+    (file_metrics @ function_metrics)
     typedtree;
   build_iterator
     ~f:(fun () -> ())
     ~compose:(fun (module L : METRIC.GENERAL) () ->
       List.iter (L.get_result ()) ~f:(fun (str, value) ->
-          CollectedMetrics.add_result (L.metric_id ^ str) info.source_file value))
+          CollectedMetrics.add_result (L.metric_id ^ str) filename value))
     ~init:()
-    metrics
+    file_metrics
 ;;
 
 let with_info filename f =

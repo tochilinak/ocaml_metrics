@@ -56,7 +56,7 @@ let get_result () =
   let vol = Float.log _n /. Float.log 2. *. _N in
   let diff = _n1 /. 2. *. (_N2 /. _n2) in
   let eff = vol *. diff in
-  [ ":volume", vol; ":difficulty", diff; ":effort", eff ]
+  [ ":dist_operators", _n1; ":volume", vol; ":difficulty", diff; ":effort", eff ]
 ;;
 
 let atom_pat_expr =
@@ -81,8 +81,6 @@ let process_not_atom expr =
   add_operator @@ get_name expr
 ;;
 
-(*print_endline @@ "operator: " ^ (get_name expr)*)
-
 let run _ fallback =
   let open Tast_iterator in
   { fallback with
@@ -95,6 +93,7 @@ let run _ fallback =
           loc
           ~on_error:(fun _desc () ->
             match expr.exp_desc with
+            | Texp_construct (_, _, []) -> ()
             | Texp_apply _ -> last_apply := true
             | x ->
               last_apply := false;
@@ -104,7 +103,7 @@ let run _ fallback =
             if !last_apply then add_operator id else add_operand id;
             last_apply := false)
           ();
-        (*print_endline (loc_printer expr.exp_loc);*)
+        (*print_endline (location_str expr.exp_loc);*)
         fallback.expr self expr)
   }
 ;;
