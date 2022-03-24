@@ -56,7 +56,7 @@ let get_result () =
   let vol = Float.log _n /. Float.log 2. *. _N in
   let diff = _n1 /. 2. *. (_N2 /. _n2) in
   let eff = vol *. diff in
-  [ ":dist_operators", _n1; ":volume", vol; ":difficulty", diff; ":effort", eff ]
+  [ "_dist_operators", _n1; "_volume", vol; "_difficulty", diff; "_effort", eff ]
 ;;
 
 let atom_pat_expr =
@@ -93,7 +93,7 @@ let run _ fallback =
           loc
           ~on_error:(fun _desc () ->
             match expr.exp_desc with
-            | Texp_construct (_, _, []) -> ()
+            | Texp_construct (_, _, []) -> () (* Unvisible construct *)
             | Texp_apply _ -> last_apply := true
             | x ->
               last_apply := false;
