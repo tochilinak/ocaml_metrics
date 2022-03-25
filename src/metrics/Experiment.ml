@@ -10,6 +10,7 @@ let result = ref 0
 let reset () = result := 0
 let update () = result := !result + 1
 let get_result () = [ "", float_of_int !result ]
+let extra_info () = []
 
 let pat_type_name pat =
   let open Typedtree in

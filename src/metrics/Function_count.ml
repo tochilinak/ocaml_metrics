@@ -7,7 +7,14 @@ type input = Tast_iterator.iterator
 
 let metric_id = "function_count"
 let result = ref 0
-let reset () = result := 0
+let notes : string Queue.t = Queue.create ()
+let extra_info () = Queue.to_list notes
+
+let reset () =
+  result := 0;
+  Queue.clear notes
+;;
+
 let update () = result := !result + 1
 let get_result () = [ "", float_of_int !result ]
 
@@ -39,13 +46,13 @@ let run _ fallback =
             in
             let msg =
               Format.asprintf
-                "Function #%d position: %s\nFunction #%d type: %s\n"
+                "Function #%d position: %s\nFunction #%d type: %s"
                 !result
                 (location_str loc)
                 !result
                 type_str
             in
-            CollectedMetrics.add_note msg)
+            Queue.enqueue notes msg)
           ();
         fallback.expr self expr)
   }

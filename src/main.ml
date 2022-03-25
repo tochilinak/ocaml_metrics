@@ -17,19 +17,24 @@ let reset_function_metrics () =
   List.iter function_metrics ~f:(fun (module L : METRIC.GENERAL) -> L.reset ())
 ;;
 
+let collect_results where (module L : METRIC.GENERAL) =
+  List.iter (L.get_result ()) ~f:(fun (str, value) ->
+      CollectedMetrics.add_result (L.metric_id ^ str) where value);
+  CollectedMetrics.add_extra_info where (L.extra_info ())
+;;
+
 let collect_function_metrics filename func_name =
   let key = filename ^ ":" ^ func_name in
-  List.iter function_metrics ~f:(fun (module L : METRIC.GENERAL) ->
-      List.iter (L.get_result ()) ~f:(fun (str, value) ->
-          CollectedMetrics.add_result (L.metric_id ^ str) key value))
+  List.iter function_metrics ~f:(collect_results key)
 ;;
 
 let init_iterator filename =
   let open Typedtree in
   let get_value_name vb =
+    let loc = short_location_str vb.vb_loc in
     match vb.vb_pat.pat_desc with
-    | Tpat_var (x, _) -> Ident.name x
-    | _ -> Format.sprintf "<Value on %s>" (short_location_str vb.vb_loc)
+    | Tpat_var (x, _) -> Format.sprintf "%s <%s>" (Ident.name x) loc
+    | _ -> Format.sprintf "<Value on %s>" loc
   in
   let open Tast_iterator in
   { default_iterator with
@@ -43,8 +48,8 @@ let init_iterator filename =
               else (
                 let value_name = get_value_name x in
                 reset_function_metrics ();
-                CollectedMetrics.add_function filename value_name;
                 default_iterator.value_binding self x;
+                CollectedMetrics.add_function filename value_name;
                 collect_function_metrics filename value_name))
         | _ -> default_iterator.structure_item self str_item)
   }
@@ -69,8 +74,7 @@ let typed_on_structure info typedtree =
   build_iterator
     ~f:(fun () -> CollectedMetrics.add_file filename)
     ~compose:(fun (module L : METRIC.GENERAL) () ->
-      List.iter (L.get_result ()) ~f:(fun (str, value) ->
-          CollectedMetrics.add_result (L.metric_id ^ str) filename value))
+      collect_results filename (module L : METRIC.GENERAL))
     ~init:()
     file_metrics
 ;;
@@ -98,7 +102,7 @@ let () =
     | Config.Unspecified -> ()
     | Dir path ->
       LoadDune.analyze_dir ~cmt:process_cmt_typedtree ~cmti:(fun _ _ -> ()) path;
-      CollectedMetrics.report Config.verbose ()
+      CollectedMetrics.report (Config.verbose ()) ()
   in
   ()
 ;;

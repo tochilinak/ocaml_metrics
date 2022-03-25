@@ -43,10 +43,6 @@ let calc_dist_operators () = Hashtbl.length operator_dictionary
 let calc_dist_operands () = Hashtbl.length operand_dictionary
 
 let get_result () =
-  (*Hashtbl.iteri operator_dictionary ~f:(fun ~key ~data ->
-      Format.printf "operator %s %d\n" key data);
-  Hashtbl.iteri operand_dictionary ~f:(fun ~key ~data ->
-      Format.printf "operand %s %d\n" key data);*)
   let _n1 = float_of_int (calc_dist_operators ()) in
   let _n2 = float_of_int (calc_dist_operands ()) in
   let _N1 = float_of_int (calc_total_operators ()) in
@@ -62,6 +58,14 @@ let get_result () =
   ; "_difficulty", diff
   ; "_effort", eff
   ]
+;;
+
+let extra_info () =
+  let get_str_list dict name =
+    Hashtbl.fold dict ~init:[] ~f:(fun ~key ~data acc ->
+        Format.sprintf "%s %s %d" name key data :: acc)
+  in
+  get_str_list operator_dictionary "operator" @ get_str_list operand_dictionary "operand"
 ;;
 
 let atom_pat_expr =

@@ -5,4 +5,5 @@ module type GENERAL = sig
   val run : Compile_common.info -> input -> input
   val get_result : unit -> (string * float) list
   val reset : unit -> unit
+  val extra_info : unit -> string list
 end
