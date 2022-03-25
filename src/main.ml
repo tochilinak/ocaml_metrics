@@ -5,22 +5,12 @@ open Utils
 
 let function_metrics =
   let open Metrics in
-  [
-    (module Halstead : METRIC.GENERAL)
-  ]
+  [ (module Halstead : METRIC.GENERAL) ]
 ;;
 
 let file_metrics =
   let open Metrics in
-  [
-    (module Function_count : METRIC.GENERAL)
-  ; (module Structure_item_count : METRIC.GENERAL)
-  ]
-;;
-
-let build_iterator ~init ~compose ~f xs =
-  let o = List.fold_left ~f:(fun acc lint -> compose lint acc) ~init xs in
-  f o
+  [ (module Function_count : METRIC.GENERAL) (*; (module Experiment : METRIC.GENERAL)*) ]
 ;;
 
 let reset_function_metrics () =
@@ -28,33 +18,41 @@ let reset_function_metrics () =
 ;;
 
 let collect_function_metrics filename func_name =
-  let name = filename ^ ":" ^ func_name in
+  let key = filename ^ ":" ^ func_name in
   List.iter function_metrics ~f:(fun (module L : METRIC.GENERAL) ->
-    List.iter (L.get_result ()) ~f:(fun (str, value) ->
-      CollectedMetrics.add_result (L.metric_id ^ str) name value))
+      List.iter (L.get_result ()) ~f:(fun (str, value) ->
+          CollectedMetrics.add_result (L.metric_id ^ str) key value))
 ;;
 
-let my_iterator filename =
+let init_iterator filename =
   let open Typedtree in
   let get_value_name vb =
     match vb.vb_pat.pat_desc with
-      | Tpat_var (x, _) -> Ident.name x
-      | _ -> Format.sprintf "<Value on %s>" (short_location_str vb.vb_loc)
+    | Tpat_var (x, _) -> Ident.name x
+    | _ -> Format.sprintf "<Value on %s>" (short_location_str vb.vb_loc)
   in
   let open Tast_iterator in
   { default_iterator with
     structure_item =
       (fun self str_item ->
         match str_item.str_desc with
-        | Tstr_value (_, list) -> List.iter list ~f:(fun x ->
-              if (empty_loc x.vb_loc) then
-                default_iterator.value_binding self x
-              else
-                (reset_function_metrics ();
+        | Tstr_value (_, list) ->
+          List.iter list ~f:(fun x ->
+              if empty_loc x.vb_loc
+              then default_iterator.value_binding self x
+              else (
+                let value_name = get_value_name x in
+                reset_function_metrics ();
+                CollectedMetrics.add_function filename value_name;
                 default_iterator.value_binding self x;
-                collect_function_metrics filename (get_value_name x)))
+                collect_function_metrics filename value_name))
         | _ -> default_iterator.structure_item self str_item)
   }
+;;
+
+let build_iterator ~init ~compose ~f xs =
+  let o = List.fold_left ~f:(fun acc lint -> compose lint acc) ~init xs in
+  f o
 ;;
 
 let typed_on_structure info typedtree =
@@ -65,11 +63,11 @@ let typed_on_structure info typedtree =
     ~compose:(fun (module L : METRIC.GENERAL) ->
       L.reset ();
       L.run info)
-    ~init:(my_iterator filename)
+    ~init:(init_iterator filename)
     (file_metrics @ function_metrics)
     typedtree;
   build_iterator
-    ~f:(fun () -> ())
+    ~f:(fun () -> CollectedMetrics.add_file filename)
     ~compose:(fun (module L : METRIC.GENERAL) () ->
       List.iter (L.get_result ()) ~f:(fun (str, value) ->
           CollectedMetrics.add_result (L.metric_id ^ str) filename value))

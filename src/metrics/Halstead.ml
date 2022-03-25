@@ -43,10 +43,10 @@ let calc_dist_operators () = Hashtbl.length operator_dictionary
 let calc_dist_operands () = Hashtbl.length operand_dictionary
 
 let get_result () =
-  Hashtbl.iteri operator_dictionary ~f:(fun ~key ~data ->
+  (*Hashtbl.iteri operator_dictionary ~f:(fun ~key ~data ->
       Format.printf "operator %s %d\n" key data);
   Hashtbl.iteri operand_dictionary ~f:(fun ~key ~data ->
-      Format.printf "operand %s %d\n" key data);
+      Format.printf "operand %s %d\n" key data);*)
   let _n1 = float_of_int (calc_dist_operators ()) in
   let _n2 = float_of_int (calc_dist_operands ()) in
   let _N1 = float_of_int (calc_total_operators ()) in
@@ -56,7 +56,12 @@ let get_result () =
   let vol = Float.log _n /. Float.log 2. *. _N in
   let diff = _n1 /. 2. *. (_N2 /. _n2) in
   let eff = vol *. diff in
-  [ "_dist_operators", _n1; "_volume", vol; "_difficulty", diff; "_effort", eff ]
+  [ "_vocabulary", _n1 +. _n2
+  ; "_length", _N1 +. _N2
+  ; "_volume", vol
+  ; "_difficulty", diff
+  ; "_effort", eff
+  ]
 ;;
 
 let atom_pat_expr =
@@ -66,11 +71,6 @@ let atom_pat_expr =
   ||| map1 (econst apply) ~f:(fun x -> "const " ^ const_to_string x)
   ||| texp_construct_visible_empty (map1 apply ~f:(fun x -> "construct " ^ x.cstr_name))
 ;;
-
-(*let loc_printer loc =
-  Location.print_loc Format.str_formatter loc;
-  String.drop_prefix (String.drop_suffix (Format.flush_str_formatter ()) 4) 4
-;;*)
 
 let process_not_atom expr =
   let open Typedtree in

@@ -5,7 +5,7 @@ open Zanuda_core.Utils
 
 type input = Tast_iterator.iterator
 
-let metric_id = "structure_item_count"
+let metric_id = "experiment"
 let result = ref 0
 let reset () = result := 0
 let update () = result := !result + 1

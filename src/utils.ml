@@ -80,14 +80,14 @@ let location_str loc =
 
 let short_location_str loc =
   let open Location in
-  let (_, l1, p1) = get_pos_info loc.loc_start in
-  let (_, l2, p2) = get_pos_info loc.loc_end in
+  let _, l1, p1 = get_pos_info loc.loc_start in
+  let _, l2, p2 = get_pos_info loc.loc_end in
   Format.sprintf "%d:%d-%d:%d" l1 p1 l2 p2
 ;;
 
 let empty_loc loc =
-    let open Location in
-    let (s1, l1, p1) = get_pos_info loc.loc_start in
-    let (s2, l2, p2) = get_pos_info loc.loc_end in
-    (String.equal s1 s2) && (l1 = l2) && (p1 = p2)
+  let open Location in
+  let s1, l1, p1 = get_pos_info loc.loc_start in
+  let s2, l2, p2 = get_pos_info loc.loc_end in
+  String.equal s1 s2 && l1 = l2 && p1 = p2
 ;;
