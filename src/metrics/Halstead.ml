@@ -23,7 +23,7 @@ let add_to_dict dict operator_name =
       | Some x -> x + 1)
 ;;
 
-let not_operator = [ "ident @@"; "Texp_function" ]
+let not_operator = [ "id @@"; "Texp_function" ]
 
 let change_name : (string, string) Hashtbl.t =
   Hashtbl.of_alist_exn
