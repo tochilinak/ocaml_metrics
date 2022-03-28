@@ -44,7 +44,7 @@ let print_metric metric_id value = Format.printf "%s: %.2f\n" metric_id value
 let print_func_metrics verbose filename func =
   let key = filename ^ ":" ^ func in
   let metrics = Hashtbl.find_exn metric_results key in
-  Format.printf "FUNCTION %s\n" func;
+  Format.printf "FUNCTION %s in %s\n" func filename;
   List.iter metrics ~f:(fun (x, y) -> print_metric x y);
   print_extra_info verbose key;
   Format.printf "\n"

@@ -339,6 +339,16 @@ let econst (T f0) =
       | _ -> fail loc (sprintf "econst"))
 ;;
 
+let pconst (T f0) =
+  T
+    (fun ctx loc x k ->
+      match x.pat_desc with
+      | Tpat_constant n ->
+        ctx.matched <- ctx.matched + 1;
+        f0 ctx loc n k
+      | _ -> fail loc (sprintf "pconst"))
+;;
+
 let eint (T f0) =
   T
     (fun ctx loc x k ->
@@ -393,6 +403,26 @@ let tpat_any =
         ctx.matched <- ctx.matched + 1;
         k
       | _ -> fail loc "tpat_any")
+;;
+
+let tpat_construct_empty (T fconstr_desc) =
+  T
+    (fun ctx loc x k ->
+      match x.pat_desc with
+      | Tpat_construct (_, desc, []) ->
+        ctx.matched <- ctx.matched + 1;
+        k |> fconstr_desc ctx loc desc
+      | _ -> fail loc "tpat_construct_empty")
+;;
+
+let tpat_alias (T fname) =
+  T
+    (fun ctx loc x k ->
+      match x.pat_desc with
+      | Tpat_alias (_, _, { txt }) ->
+        ctx.matched <- ctx.matched + 1;
+        k |> fname ctx loc txt
+      | _ -> fail loc "tpat_alias")
 ;;
 
 let texp_construct_visible_empty (T fconstr_desc) =
@@ -491,6 +521,7 @@ type case_val = Typedtree.case
 type case_comp = Typedtree.case
 type value_pat = pattern
 type comp_pat = pattern
+type 'k gen_pat = pattern
 
 [%%else]
 
@@ -498,8 +529,32 @@ type case_val = value case
 type case_comp = computation case
 type value_pat = value pattern_desc pattern_data
 type comp_pat = computation pattern_desc pattern_data
+type 'k gen_pat = 'k general_pattern
 
 [%%endif]
+
+type my_general_pattern =
+  | Value of value_pat
+  | Computation of comp_pat
+  | Or_pattern
+
+let convert_gen_pat : type k. k gen_pat -> my_general_pattern =
+ fun x ->
+  match x.pat_desc with
+  | Tpat_any -> Value x
+  | Tpat_var _ -> Value x
+  | Tpat_constant _ -> Value x
+  | Tpat_tuple _ -> Value x
+  | Tpat_construct _ -> Value x
+  | Tpat_variant _ -> Value x
+  | Tpat_record _ -> Value x
+  | Tpat_array _ -> Value x
+  | Tpat_alias _ -> Value x
+  | Tpat_lazy _ -> Value x
+  | Tpat_value _ -> Computation x
+  | Tpat_exception _ -> Computation x
+  | Tpat_or _ -> Or_pattern
+;;
 
 let texp_function (T fcases) =
   T

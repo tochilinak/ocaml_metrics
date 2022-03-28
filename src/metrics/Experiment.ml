@@ -37,11 +37,6 @@ let print_structure_type str_desc =
   | _ -> ()
 ;;
 
-let loc_printer loc =
-  Location.print_loc Format.str_formatter loc;
-  String.drop_prefix (String.drop_suffix (Format.flush_str_formatter ()) 4) 4
-;;
-
 let print_empty_construct_name expr =
   let open Typedtree in
   let open Types in
@@ -58,16 +53,38 @@ let print_empty_construct_name expr =
   | _ -> ()
 ;;
 
-let run _ fallback = fallback
-(*let open Tast_iterator in
+let pat_proc : type k. k Typedtree.general_pattern -> unit =
+ fun pat ->
+  match pat.pat_desc with
+  | Tpat_any -> ()
+  | Tpat_var _ -> ()
+  | Tpat_constant _ -> ()
+  | Tpat_tuple _ -> ()
+  | Tpat_construct _ -> ()
+  | Tpat_variant _ -> ()
+  | Tpat_record _ -> ()
+  | Tpat_array _ -> ()
+  | Tpat_alias _ -> ()
+  | Tpat_lazy _ -> ()
+  | Tpat_value _ -> print_endline @@ "value " ^ location_str pat.pat_loc
+  | Tpat_exception _ -> print_endline @@ "exception " ^ location_str pat.pat_loc
+  | Tpat_or _ -> print_endline @@ "or " ^ location_str pat.pat_loc
+;;
+
+let run _ fallback =
+  let open Tast_iterator in
   { fallback with
-    (*structure_item =
+    pat =
+      (fun self pat ->
+        pat_proc pat;
+        fallback.pat self pat)
+      (*structure_item =
         (fun self str_item ->
           (*update ();
           print_structure_type str_item.str_desc;
           print_endline @@ loc_printer str_item.str_loc;*)
           fallback.structure_item self str_item);*)
-    (*expr =
+      (*expr =
       (fun self expr ->
         print_endline "-------------------------";
           print_endline @@ Texp_names.texp_name expr.exp_desc;
@@ -75,11 +92,12 @@ let run _ fallback = fallback
           print_empty_construct_name expr.exp_desc;
           print_endline "-------------------------";
         fallback.expr self expr)*)
-  (*; case =
+      (*; case =
       (fun self case ->
         (*(match case.c_guard with
             | Some e -> print_endline @@ "Some" ^ (loc_printer e.exp_loc)
             | None -> print_endline "None"
           );*)
         fallback.case self case)*)
-  }*)
+  }
+;;

@@ -24,11 +24,25 @@ let add_to_dict dict operator_name =
 ;;
 
 let not_operator = [ "ident @@"; "Texp_function" ]
+let change_name : (string, string) Hashtbl.t =
+  Hashtbl.of_alist_exn ~growth_allowed:false (module String)
+  [ ("Texp_tuple", "tuple")
+  ; ("Tpat_tuple", "tuple")
+  ; ("Texp_array", "array")
+  ; ("Tpat_array", "array")
+  ; ("Texp_record", "record")
+  ; ("Tpat_record", "record")]
 
 let add_operator x =
   if List.mem not_operator x ~equal:String.equal
   then ()
-  else add_to_dict operator_dictionary x
+  else
+    let name =
+      match Hashtbl.find change_name x with
+      | Some y -> y
+      | None -> x
+    in
+    add_to_dict operator_dictionary name
 ;;
 
 let add_operand = add_to_dict operand_dictionary
@@ -63,7 +77,7 @@ let get_result () =
 let extra_info () =
   let get_str_list dict name =
     Hashtbl.fold dict ~init:[] ~f:(fun ~key ~data acc ->
-        Format.sprintf "%s %s %d" name key data :: acc)
+        Format.sprintf "%s < %s > used %d times" name key data :: acc)
   in
   get_str_list operator_dictionary "operator" @ get_str_list operand_dictionary "operand"
 ;;
@@ -71,18 +85,86 @@ let extra_info () =
 let atom_pat_expr =
   let open Tast_pattern in
   let open Types in
-  texp_ident @@ map1 apply ~f:(fun x -> "ident " ^ Path.last x)
+  texp_ident @@ map1 apply ~f:(fun x -> "id " ^ Path.last x)
   ||| map1 (econst apply) ~f:(fun x -> "const " ^ const_to_string x)
   ||| texp_construct_visible_empty (map1 apply ~f:(fun x -> "construct " ^ x.cstr_name))
 ;;
 
-let process_not_atom expr =
+let process_not_atom_expr expr =
   let open Typedtree in
   let get_name = function
-    | Texp_construct (_, x, _) -> "Texp_construct " ^ x.cstr_name
-    | _ -> Texp_names.texp_name expr
+    | Texp_construct (_, x, _) -> "construct " ^ x.cstr_name
+    | _ -> Names.texp_name expr
   in
   add_operator @@ get_name expr
+;;
+
+let process_expression expr =
+  let open Typedtree in
+  let loc = expr.exp_loc in
+  Tast_pattern.parse
+    atom_pat_expr
+    loc
+    ~on_error:(fun _desc () ->
+      match expr.exp_desc with
+      | Texp_construct (_, _, []) -> () (* Unvisible construct *)
+      | Texp_apply _ -> last_apply := true
+      | x ->
+        last_apply := false;
+        process_not_atom_expr x)
+    expr
+    (fun id () ->
+      if !last_apply then add_operator id else add_operand id;
+      last_apply := false
+      (*print_endline @@ id ^ " on " ^ (location_str expr.exp_loc)*))
+    ()
+;;
+
+let atom_pat_value =
+  let open Tast_pattern in
+  let open Types in
+  tpat_var @@ map1 apply ~f:(fun x -> "id " ^ x)
+  ||| map0 tpat_any ~f:"_"
+  ||| tpat_construct_empty (map1 apply ~f:(fun x -> "construct " ^ x.cstr_name))
+  ||| map1 (pconst apply) ~f:(fun x -> "const " ^ const_to_string x)
+  ||| tpat_alias @@ map1 apply ~f:(fun x -> "id " ^ x)
+;;
+
+let process_not_atom_value pat =
+  let open Typedtree in
+  let get_name = function
+    | Tpat_construct (_, x, _) -> "construct " ^ x.cstr_name
+    | _ -> Names.tpat_name pat
+  in
+  add_operator @@ get_name pat
+;;
+
+let atom_pat_comp =
+  let open Tast_pattern in
+  map0 (tpat_exception drop) ~f:"exception"
+;;
+
+let process_pattern : type k. k Typedtree.general_pattern -> unit =
+ fun pat ->
+  let open Typedtree in
+  match Tast_pattern.convert_gen_pat pat with
+  | Value x ->
+    Tast_pattern.parse
+      atom_pat_value
+      x.pat_loc
+      ~on_error:(fun _desc () -> process_not_atom_value x.pat_desc)
+      x
+      (fun id () -> add_operand id)
+      ()
+  | Computation x ->
+    Tast_pattern.parse
+      atom_pat_comp
+      x.pat_loc
+      ~on_error:(fun _desc () -> ())
+      x
+      (fun id () -> add_operator id)
+      ()
+  | Or_pattern -> add_operator "Tpat_or"
 ;;
 
 let run _ fallback =
@@ -90,24 +172,15 @@ let run _ fallback =
   { fallback with
     expr =
       (fun self expr ->
-        let open Typedtree in
-        let loc = expr.exp_loc in
-        Tast_pattern.parse
-          atom_pat_expr
-          loc
-          ~on_error:(fun _desc () ->
-            match expr.exp_desc with
-            | Texp_construct (_, _, []) -> () (* Unvisible construct *)
-            | Texp_apply _ -> last_apply := true
-            | x ->
-              last_apply := false;
-              process_not_atom x)
-          expr
-          (fun id () ->
-            if !last_apply then add_operator id else add_operand id;
-            last_apply := false)
-          ();
-        (*print_endline (location_str expr.exp_loc);*)
-        fallback.expr self expr)
+        process_expression expr;
+        fallback.expr self expr);
+    pat =
+      (fun self pat ->
+        process_pattern pat;
+        fallback.pat self pat);
+    case =
+      (fun self case ->
+        add_operator "case";
+        fallback.case self case)
   }
 ;;

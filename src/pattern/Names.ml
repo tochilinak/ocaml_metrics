@@ -35,3 +35,19 @@ let texp_name = function
   | Texp_extension_constructor _ -> "Texp_extension_constructor"
   | Texp_open _ -> "Texp_open"
 ;;
+
+let tpat_name : type k. k Typedtree.pattern_desc -> string = function
+  | Tpat_any -> "Tpat_any"
+  | Tpat_var _ -> "Tpat_var"
+  | Tpat_constant _ -> "Tpat_constant"
+  | Tpat_tuple _ -> "Tpat_tuple"
+  | Tpat_construct _ -> "Tpat_construct"
+  | Tpat_variant _ -> "Tpat_variant"
+  | Tpat_record _ -> "Tpat_record"
+  | Tpat_array _ -> "Tpat_array"
+  | Tpat_alias _ -> "Tpat_alias"
+  | Tpat_lazy _ -> "Tpat_lazy"
+  | Tpat_value _ -> "Tpat_value"
+  | Tpat_exception _ -> "Tpat_exception"
+  | Tpat_or _ -> "Tpat_or"
+;;

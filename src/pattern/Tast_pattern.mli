@@ -74,6 +74,7 @@ type case_val = Typedtree.case
 type case_comp = Typedtree.case
 type value_pat = pattern
 type comp_pat = pattern
+type 'k gen_pat = pattern
 
 [%%else]
 
@@ -81,9 +82,16 @@ type case_val = value case
 type case_comp = computation case
 type value_pat = value pattern_desc pattern_data
 type comp_pat = computation pattern_desc pattern_data
+type 'k gen_pat = 'k general_pattern
 
 [%%endif]
 
+type my_general_pattern =
+  | Value of value_pat
+  | Computation of comp_pat
+  | Or_pattern
+
+val convert_gen_pat : 'k gen_pat -> my_general_pattern
 val nolabel : (Asttypes.arg_label, 'a, 'a) t
 val tpat_var : (string, 'a, 'b) t -> (pattern, 'a, 'b) t
 val tpat_exception : (value_pat, 'a, 'b) t -> (comp_pat, 'a, 'b) t
@@ -97,9 +105,17 @@ val pident : (string, 'a, 'b) t -> (Path.t, 'a, 'b) t
     texp_ident (path [ "Stdlib"; "&&" ])  (* CORRECT *)
 *)
 
+val pconst : (Asttypes.constant, 'a, 'b) t -> (value_pat, 'a, 'b) t
+
+val tpat_construct_empty
+  :  (Types.constructor_description, 'a, 'b) t
+  -> (value_pat, 'a, 'b) t
+
 val texp_construct_visible_empty
   :  (Types.constructor_description, 'a, 'b) t
   -> (expression, 'a, 'b) t
+
+val tpat_alias : (string, 'a, 'b) t -> (pattern, 'a, 'b) t
 
 val texp_ident : (Path.t, 'a, 'b) t -> (expression, 'a, 'b) t
 
