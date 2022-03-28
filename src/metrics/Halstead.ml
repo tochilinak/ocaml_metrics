@@ -24,25 +24,30 @@ let add_to_dict dict operator_name =
 ;;
 
 let not_operator = [ "ident @@"; "Texp_function" ]
+
 let change_name : (string, string) Hashtbl.t =
-  Hashtbl.of_alist_exn ~growth_allowed:false (module String)
-  [ ("Texp_tuple", "tuple")
-  ; ("Tpat_tuple", "tuple")
-  ; ("Texp_array", "array")
-  ; ("Tpat_array", "array")
-  ; ("Texp_record", "record")
-  ; ("Tpat_record", "record")]
+  Hashtbl.of_alist_exn
+    ~growth_allowed:false
+    (module String)
+    [ "Texp_tuple", "tuple"
+    ; "Tpat_tuple", "tuple"
+    ; "Texp_array", "array"
+    ; "Tpat_array", "array"
+    ; "Texp_record", "record"
+    ; "Tpat_record", "record"
+    ]
+;;
 
 let add_operator x =
   if List.mem not_operator x ~equal:String.equal
   then ()
-  else
+  else (
     let name =
       match Hashtbl.find change_name x with
       | Some y -> y
       | None -> x
     in
-    add_to_dict operator_dictionary name
+    add_to_dict operator_dictionary name)
 ;;
 
 let add_operand = add_to_dict operand_dictionary
@@ -115,8 +120,7 @@ let process_expression expr =
     expr
     (fun id () ->
       if !last_apply then add_operator id else add_operand id;
-      last_apply := false
-      (*print_endline @@ id ^ " on " ^ (location_str expr.exp_loc)*))
+      last_apply := false (*print_endline @@ id ^ " on " ^ (location_str expr.exp_loc)*))
     ()
 ;;
 
@@ -173,12 +177,12 @@ let run _ fallback =
     expr =
       (fun self expr ->
         process_expression expr;
-        fallback.expr self expr);
-    pat =
+        fallback.expr self expr)
+  ; pat =
       (fun self pat ->
         process_pattern pat;
-        fallback.pat self pat);
-    case =
+        fallback.pat self pat)
+  ; case =
       (fun self case ->
         add_operator "case";
         fallback.case self case)

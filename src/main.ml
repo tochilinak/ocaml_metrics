@@ -31,9 +31,7 @@ let collect_function_metrics filename func_name =
   List.iter function_metrics ~f:(collect_results key)
 ;;
 
-let collect_file_metrics filename =
-  List.iter file_metrics ~f:(collect_results filename)
-;;
+let collect_file_metrics filename = List.iter file_metrics ~f:(collect_results filename)
 
 let init_iterator filename =
   let open Typedtree in
@@ -58,8 +56,8 @@ let init_iterator filename =
                 reset_function_metrics ();
                 default_iterator.value_binding self x;
                 collect_function_metrics filename value_name))
-        | _ -> default_iterator.structure_item self str_item);
-    structure =
+        | _ -> default_iterator.structure_item self str_item)
+  ; structure =
       (fun self structure ->
         CollectedMetrics.add_file filename;
         reset_file_metrics ();

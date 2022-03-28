@@ -116,7 +116,6 @@ val texp_construct_visible_empty
   -> (expression, 'a, 'b) t
 
 val tpat_alias : (string, 'a, 'b) t -> (pattern, 'a, 'b) t
-
 val texp_ident : (Path.t, 'a, 'b) t -> (expression, 'a, 'b) t
 
 val texp_ident_typ
