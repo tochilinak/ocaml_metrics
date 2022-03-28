@@ -1,3 +1,0 @@
-#### Pull request template
-
-TODO
