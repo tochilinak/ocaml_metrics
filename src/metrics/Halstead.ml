@@ -93,6 +93,7 @@ let atom_pat_expr =
   texp_ident @@ map1 apply ~f:(fun x -> "id " ^ Path.last x)
   ||| map1 (econst apply) ~f:(fun x -> "const " ^ const_to_string x)
   ||| texp_construct_visible_empty (map1 apply ~f:(fun x -> "construct " ^ x.cstr_name))
+  ||| texp_field drop @@ label_desc (map1 apply ~f:(fun x -> "field " ^ x))
 ;;
 
 let process_not_atom_expr expr =
@@ -104,6 +105,13 @@ let process_not_atom_expr expr =
   add_operator @@ get_name expr
 ;;
 
+let process_not_atom_operand expr =
+  let open Typedtree in
+  match expr.exp_desc with
+  | Texp_setfield (_, _, x, _) -> add_operand @@ "field " ^ x.lbl_name
+  | _ -> ()
+;;
+
 let process_expression expr =
   let open Typedtree in
   let loc = expr.exp_loc in
@@ -111,6 +119,7 @@ let process_expression expr =
     atom_pat_expr
     loc
     ~on_error:(fun _desc () ->
+      process_not_atom_operand expr;
       match expr.exp_desc with
       | Texp_construct (_, _, []) -> () (* Unvisible construct *)
       | Texp_apply _ -> last_apply := true
