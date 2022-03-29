@@ -13,12 +13,9 @@ let file_metrics =
   [ (module Function_count : METRIC.GENERAL) (*; (module Experiment : METRIC.GENERAL)*) ]
 ;;
 
-let reset_metrics metric_list =
-  List.iter metric_list ~f:(fun (module L : METRIC.GENERAL) -> L.reset ())
+let reset_function_metrics () =
+  List.iter function_metrics ~f:(fun (module L : METRIC.GENERAL) -> L.reset ())
 ;;
-
-let reset_function_metrics () = reset_metrics function_metrics
-let reset_file_metrics () = reset_metrics file_metrics
 
 let collect_results where (module L : METRIC.GENERAL) =
   List.iter (L.get_result ()) ~f:(fun (str, value) ->
@@ -30,8 +27,6 @@ let collect_function_metrics filename func_name =
   let key = filename ^ ":" ^ func_name in
   List.iter function_metrics ~f:(collect_results key)
 ;;
-
-let collect_file_metrics filename = List.iter file_metrics ~f:(collect_results filename)
 
 let init_iterator filename =
   let open Typedtree in
@@ -57,12 +52,6 @@ let init_iterator filename =
                 default_iterator.value_binding self x;
                 collect_function_metrics filename value_name))
         | _ -> default_iterator.structure_item self str_item)
-  ; structure =
-      (fun self structure ->
-        CollectedMetrics.add_file filename;
-        reset_file_metrics ();
-        default_iterator.structure self structure;
-        collect_file_metrics filename)
   }
 ;;
 
@@ -81,7 +70,13 @@ let typed_on_structure info typedtree =
     ~compose:(fun (module L : METRIC.GENERAL) -> L.run info)
     ~init:(init_iterator filename)
     (file_metrics @ function_metrics)
-    typedtree
+    typedtree;
+  build_iterator
+    ~f:(fun () -> CollectedMetrics.add_file filename)
+    ~compose:(fun (module L : METRIC.GENERAL) () ->
+        collect_results filename (module L : METRIC.GENERAL))
+    ~init:()
+    file_metrics
 ;;
 
 let with_info filename f =
