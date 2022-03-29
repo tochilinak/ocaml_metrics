@@ -92,7 +92,7 @@ let atom_pat_expr =
   let open Types in
   texp_ident @@ map1 apply ~f:(fun x -> "id " ^ Path.last x)
   ||| map1 (econst apply) ~f:(fun x -> "const " ^ const_to_string x)
-  ||| texp_construct_visible_empty (map1 apply ~f:(fun x -> "construct " ^ x.cstr_name))
+  ||| texp_construct_empty (map1 apply ~f:(fun x -> "construct " ^ x.cstr_name))
   ||| texp_field drop @@ label_desc (map1 apply ~f:(fun x -> "field " ^ x))
 ;;
 
@@ -121,7 +121,6 @@ let process_expression expr =
     ~on_error:(fun _desc () ->
       process_not_atom_operand expr;
       match expr.exp_desc with
-      | Texp_construct (_, _, []) -> () (* Unvisible construct *)
       | Texp_apply _ -> last_apply := true
       | x ->
         last_apply := false;
@@ -180,12 +179,23 @@ let process_pattern : type k. k Typedtree.general_pattern -> unit =
   | Or_pattern -> add_operator "Tpat_or"
 ;;
 
+let format_construct expr =
+  let open Location in
+  let open Typedtree in
+  match expr.exp_desc with
+  | Texp_construct (_, desc, _) ->
+    (match get_pos_info desc.cstr_loc.loc_start with
+    | "camlinternalFormatBasics.mli", _, _ -> true
+    | _ -> false)
+  | _ -> false
+;;
+
 let run _ fallback =
   let open Tast_iterator in
   { fallback with
     expr =
       (fun self expr ->
-        process_expression expr;
+        if not (format_construct expr) then process_expression expr;
         fallback.expr self expr)
   ; pat =
       (fun self pat ->

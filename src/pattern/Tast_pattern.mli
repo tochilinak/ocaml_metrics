@@ -111,7 +111,7 @@ val tpat_construct_empty
   :  (Types.constructor_description, 'a, 'b) t
   -> (value_pat, 'a, 'b) t
 
-val texp_construct_visible_empty
+val texp_construct_empty
   :  (Types.constructor_description, 'a, 'b) t
   -> (expression, 'a, 'b) t
 

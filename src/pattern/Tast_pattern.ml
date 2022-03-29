@@ -425,17 +425,14 @@ let tpat_alias (T fname) =
       | _ -> fail loc "tpat_alias")
 ;;
 
-let texp_construct_visible_empty (T fconstr_desc) =
+let texp_construct_empty (T fconstr_desc) =
   T
     (fun ctx loc x k ->
       match x.exp_desc with
       | Texp_construct (_, desc, []) ->
-        (match desc.cstr_loc.loc_ghost with
-        | true ->
-          ctx.matched <- ctx.matched + 1;
-          k |> fconstr_desc ctx loc desc
-        | false -> fail loc "texp_construct_visible_empty")
-      | _ -> fail loc "texp_construct_visible_empty")
+        ctx.matched <- ctx.matched + 1;
+        k |> fconstr_desc ctx loc desc
+      | _ -> fail loc "texp_construct_empty")
 ;;
 
 let texp_ident (T fpath) =

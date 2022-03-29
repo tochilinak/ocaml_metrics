@@ -74,24 +74,23 @@ let pat_proc : type k. k Typedtree.general_pattern -> unit =
 let run _ fallback =
   let open Tast_iterator in
   { fallback with
-    pat =
+    (*pat =
       (fun self pat ->
         pat_proc pat;
-        fallback.pat self pat)
-      (*structure_item =
+        fallback.pat self pat)*)
+    (*structure_item =
         (fun self str_item ->
           (*update ();
           print_structure_type str_item.str_desc;
           print_endline @@ loc_printer str_item.str_loc;*)
           fallback.structure_item self str_item);*)
-      (*expr =
+    expr =
       (fun self expr ->
-        print_endline "-------------------------";
-          print_endline @@ Texp_names.texp_name expr.exp_desc;
-          print_endline @@ loc_printer expr.exp_loc;
-          print_empty_construct_name expr.exp_desc;
-          print_endline "-------------------------";
-        fallback.expr self expr)*)
+        (match expr.exp_desc with
+        | Texp_construct (_, desc, _) when not desc.cstr_loc.loc_ghost ->
+          Format.printf "EXP: %s %s\n" desc.cstr_name @@ location_str desc.cstr_loc
+        | _ -> ());
+        fallback.expr self expr)
       (*; case =
       (fun self case ->
         (*(match case.c_guard with
