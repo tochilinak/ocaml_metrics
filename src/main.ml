@@ -67,7 +67,9 @@ let typed_on_structure info typedtree =
   in
   build_iterator
     ~f:(fun o -> o.Tast_iterator.structure o)
-    ~compose:(fun (module L : METRIC.GENERAL) -> L.run info)
+    ~compose:(fun (module L : METRIC.GENERAL) ->
+        L.reset ();
+        L.run info)
     ~init:(init_iterator filename)
     (file_metrics @ function_metrics)
     typedtree;
