@@ -28,7 +28,7 @@ let collect_function_metrics filename func_name =
   List.iter function_metrics ~f:(collect_results key)
 ;;
 
-let init_iterator filename =
+let outer_iterator filename fallback =
   let open Typedtree in
   let get_value_name vb =
     let loc = short_location_str vb.vb_loc in
@@ -37,21 +37,23 @@ let init_iterator filename =
     | _ -> Format.sprintf "<Value on %s>" loc
   in
   let open Tast_iterator in
-  { default_iterator with
+  let function_value_binding self x =
+    let value_name = get_value_name x in
+    CollectedMetrics.add_function filename value_name;
+    reset_function_metrics ();
+    fallback.value_binding self x;
+    collect_function_metrics filename value_name
+  in
+  { fallback with
     structure_item =
       (fun self str_item ->
         match str_item.str_desc with
         | Tstr_value (_, list) ->
           List.iter list ~f:(fun x ->
-              if empty_loc x.vb_loc
-              then default_iterator.value_binding self x
-              else (
-                let value_name = get_value_name x in
-                CollectedMetrics.add_function filename value_name;
-                reset_function_metrics ();
-                default_iterator.value_binding self x;
-                collect_function_metrics filename value_name))
-        | _ -> default_iterator.structure_item self str_item)
+            if empty_loc x.vb_loc
+            then fallback.value_binding self x
+            else function_value_binding self x)
+        | _ -> fallback.structure_item self str_item)
   }
 ;;
 
@@ -66,17 +68,19 @@ let typed_on_structure info typedtree =
     String.chop_prefix_if_exists info.source_file ~prefix:"_build/default/"
   in
   build_iterator
-    ~f:(fun o -> o.Tast_iterator.structure o)
+    ~f:(fun o ->
+      let result_iterator = outer_iterator filename o in
+      result_iterator.Tast_iterator.structure result_iterator)
     ~compose:(fun (module L : METRIC.GENERAL) ->
-        L.reset ();
-        L.run info)
-    ~init:(init_iterator filename)
+      L.reset ();
+      L.run info)
+    ~init:(Tast_iterator.default_iterator)
     (file_metrics @ function_metrics)
     typedtree;
   build_iterator
     ~f:(fun () -> CollectedMetrics.add_file filename)
     ~compose:(fun (module L : METRIC.GENERAL) () ->
-        collect_results filename (module L : METRIC.GENERAL))
+      collect_results filename (module L : METRIC.GENERAL))
     ~init:()
     file_metrics
 ;;
