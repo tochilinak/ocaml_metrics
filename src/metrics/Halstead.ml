@@ -80,17 +80,20 @@ let get_result () =
 ;;
 
 let extra_info () =
-  let get_str_list dict name =
+  let get_str_list dict =
     Hashtbl.fold dict ~init:[] ~f:(fun ~key ~data acc ->
-        Format.sprintf "%s < %s > used %d times" name key data :: acc)
+        Format.sprintf "< %s > used %d times" key data :: acc)
   in
-  get_str_list operator_dictionary "operator" @ get_str_list operand_dictionary "operand"
+  [ "operators:" ]
+  @ get_str_list operator_dictionary
+  @ [ "\noperands:" ]
+  @ get_str_list operand_dictionary
 ;;
 
 let atom_pat_expr =
   let open Tast_pattern in
   let open Types in
-  texp_ident @@ map1 apply ~f:(fun x -> "id " ^ Path.last x)
+  texp_ident @@ map1 apply ~f:(fun x -> "id " ^ Path.name x)
   ||| map1 (econst apply) ~f:(fun x -> "const " ^ const_to_string x)
   ||| texp_construct_empty (map1 apply ~f:(fun x -> "construct " ^ x.cstr_name))
   ||| texp_field drop @@ label_desc (map1 apply ~f:(fun x -> "field " ^ x))
@@ -107,8 +110,15 @@ let process_not_atom_expr expr =
 
 let process_not_atom_operand expr =
   let open Typedtree in
+  let open Asttypes in
   match expr.exp_desc with
   | Texp_setfield (_, _, x, _) -> add_operand @@ "field " ^ x.lbl_name
+  | Texp_apply (_, list) ->
+    List.iter list ~f:(fun x ->
+        match x with
+        | _, None -> ()
+        | Labelled s, _ | Optional s, _ -> add_operand @@ "label " ^ s
+        | _ -> ())
   | _ -> ()
 ;;
 
@@ -201,9 +211,5 @@ let run _ fallback =
       (fun self pat ->
         process_pattern pat;
         fallback.pat self pat)
-  ; case =
-      (fun self case ->
-        add_operator "case";
-        fallback.case self case)
   }
 ;;

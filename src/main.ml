@@ -50,9 +50,9 @@ let outer_iterator filename fallback =
         match str_item.str_desc with
         | Tstr_value (_, list) ->
           List.iter list ~f:(fun x ->
-            if empty_loc x.vb_loc
-            then fallback.value_binding self x
-            else function_value_binding self x)
+              if empty_loc x.vb_loc
+              then fallback.value_binding self x
+              else function_value_binding self x)
         | _ -> fallback.structure_item self str_item)
   }
 ;;
@@ -74,7 +74,7 @@ let typed_on_structure info typedtree =
     ~compose:(fun (module L : METRIC.GENERAL) ->
       L.reset ();
       L.run info)
-    ~init:(Tast_iterator.default_iterator)
+    ~init:Tast_iterator.default_iterator
     (file_metrics @ function_metrics)
     typedtree;
   build_iterator
