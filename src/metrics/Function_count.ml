@@ -3,8 +3,6 @@ module Format = Caml.Format
 open Zanuda_core
 open Zanuda_core.Utils
 
-type input = Tast_iterator.iterator
-
 let metric_id = "function_count"
 let result = ref 0
 let notes : string Queue.t = Queue.create ()
@@ -18,7 +16,7 @@ let reset () =
 let update () = result := !result + 1
 let get_result () = [ "", float_of_int !result ]
 
-let run _ fallback =
+let run _ _ fallback =
   let pat =
     let open Tast_pattern in
     texp_function (first_case (case pat_type drop exp_type))

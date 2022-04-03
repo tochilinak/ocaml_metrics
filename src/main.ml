@@ -3,9 +3,19 @@ open Base
 open Zanuda_core
 open Utils
 
+module Embed (F : METRIC.FUNCTION) : METRIC.GENERAL = struct
+  include F
+end
+
 let function_metrics =
   let open Metrics in
-  [ (module Halstead : METRIC.GENERAL) ]
+  [ (module Halstead : METRIC.FUNCTION); (module LOC : METRIC.FUNCTION) ]
+;;
+
+let function_metrics_as_gen =
+  List.map
+    function_metrics
+    ~f:(fun (module L : METRIC.FUNCTION) : (module METRIC.GENERAL) -> (module Embed (L)))
 ;;
 
 let file_metrics =
@@ -14,7 +24,7 @@ let file_metrics =
 ;;
 
 let reset_function_metrics () =
-  List.iter function_metrics ~f:(fun (module L : METRIC.GENERAL) -> L.reset ())
+  List.iter function_metrics ~f:(fun (module L : METRIC.FUNCTION) -> L.inner_reset ())
 ;;
 
 let collect_results where (module L : METRIC.GENERAL) =
@@ -25,10 +35,10 @@ let collect_results where (module L : METRIC.GENERAL) =
 
 let collect_function_metrics filename func_name =
   let key = filename ^ ":" ^ func_name in
-  List.iter function_metrics ~f:(collect_results key)
+  List.iter function_metrics_as_gen ~f:(collect_results key)
 ;;
 
-let outer_iterator filename fallback =
+let init_iterator filename =
   let open Typedtree in
   let get_value_name vb =
     let loc = short_location_str vb.vb_loc in
@@ -41,19 +51,19 @@ let outer_iterator filename fallback =
     let value_name = get_value_name x in
     CollectedMetrics.add_function filename value_name;
     reset_function_metrics ();
-    fallback.value_binding self x;
+    self.value_binding self x;
     collect_function_metrics filename value_name
   in
-  { fallback with
+  { default_iterator with
     structure_item =
       (fun self str_item ->
         match str_item.str_desc with
         | Tstr_value (_, list) ->
           List.iter list ~f:(fun x ->
               if empty_loc x.vb_loc
-              then fallback.value_binding self x
+              then self.value_binding self x
               else function_value_binding self x)
-        | _ -> fallback.structure_item self str_item)
+        | _ -> default_iterator.structure_item self str_item)
   }
 ;;
 
@@ -62,25 +72,20 @@ let build_iterator ~init ~compose ~f xs =
   f o
 ;;
 
-let typed_on_structure info typedtree =
+let typed_on_structure info file_content typedtree =
   let open Compile_common in
-  let filename =
-    String.chop_prefix_if_exists info.source_file ~prefix:"_build/default/"
-  in
+  let filename = cut_build_dir info.source_file in
   build_iterator
-    ~f:(fun o ->
-      let result_iterator = outer_iterator filename o in
-      result_iterator.Tast_iterator.structure result_iterator)
+    ~f:(fun o -> o.Tast_iterator.structure o)
     ~compose:(fun (module L : METRIC.GENERAL) ->
       L.reset ();
-      L.run info)
-    ~init:Tast_iterator.default_iterator
-    (file_metrics @ function_metrics)
+      L.run info file_content)
+    ~init:(init_iterator filename)
+    (file_metrics @ function_metrics_as_gen)
     typedtree;
   build_iterator
     ~f:(fun () -> CollectedMetrics.add_file filename)
-    ~compose:(fun (module L : METRIC.GENERAL) () ->
-      collect_results filename (module L : METRIC.GENERAL))
+    ~compose:(fun (module L : METRIC.GENERAL) () -> collect_results filename (module L))
     ~init:()
     file_metrics
 ;;
@@ -95,10 +100,24 @@ let with_info filename f =
     f
 ;;
 
+let read_file filename =
+  let lines : string Queue.t = Queue.create () in
+  let ic = open_in filename in
+  (try
+     Queue.enqueue lines "";
+     while true do
+       Queue.enqueue lines (input_line ic)
+     done
+   with
+  | End_of_file -> close_in ic);
+  Queue.to_array lines
+;;
+
 let process_cmt_typedtree filename typedtree =
   if Config.verbose () then printfn "Analyzing file: %s" filename;
   (*Format.printf "Typedtree ML:\n%a\n%!" Printtyped.implementation typedtree;*)
-  with_info filename (fun info -> typed_on_structure info typedtree)
+  let file_content = read_file @@ cut_build_dir filename in
+  with_info filename (fun info -> typed_on_structure info file_content typedtree)
 ;;
 
 let () =

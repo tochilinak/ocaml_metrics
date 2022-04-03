@@ -3,14 +3,13 @@ module Format = Caml.Format
 open Zanuda_core
 open Zanuda_core.Utils
 
-type input = Tast_iterator.iterator
-
-let metric_id = "halstead"
+let metric_id = "Halstead"
 let operand_dictionary : (string, int) Hashtbl.t = Hashtbl.create (module String)
 let operator_dictionary : (string, int) Hashtbl.t = Hashtbl.create (module String)
 let last_apply = ref false
+let reset () = ()
 
-let reset () =
+let inner_reset () =
   Hashtbl.clear operand_dictionary;
   Hashtbl.clear operator_dictionary;
   last_apply := false
@@ -200,7 +199,7 @@ let format_construct expr =
   | _ -> false
 ;;
 
-let run _ fallback =
+let run _ _ fallback =
   let open Tast_iterator in
   { fallback with
     expr =
