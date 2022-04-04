@@ -11,24 +11,30 @@ let reset () = last_structure_item := false
 let inner_reset () = result := 0
 let get_result () = [ "", float_of_int !result ]
 
-let count_lines file_content loc =
+let range from till =
+  Sequence.unfold ~init:from ~f:(function
+      | x when x > till -> None
+      | x -> Some (x, x + 1))
+;;
+
+let get_lines loc =
   let open Location in
   let _, start_line, _ = get_pos_info loc.loc_start in
   let _, end_line, _ = get_pos_info loc.loc_end in
-  let line_nums =
-    Sequence.unfold ~init:start_line ~f:(function
-        | x when x > end_line -> None
-        | x -> Some (x, x + 1))
-  in
+  start_line, end_line
+;;
+
+let count_lines file_content loc =
+  let start_line, end_line = get_lines loc in
+  let line_nums = range start_line end_line in
   Sequence.counti line_nums ~f:(fun _ x -> not @@ String.equal file_content.(x) "")
 ;;
 
-let remove_comment_lines file_content =
-  let result = Array.copy file_content in
+let remove_comment_lines file_content (from, till) =
   let iter_line line init_bal =
     (* last coordinate is true if comment_line *)
     String.fold
-      result.(line)
+      file_content.(line)
       ~init:(' ', init_bal, true, true)
       ~f:(fun (c1, bal, r1, r2) c2 ->
         match c1, c2 with
@@ -37,20 +43,60 @@ let remove_comment_lines file_content =
         | _ -> if bal = 0 && c2 != ' ' then c2, bal, r2, false else c2, bal, r2, r2)
   in
   let rec go balance line =
-    if line < Array.length result
+    if line <= till
     then (
-      result.(line) <- String.strip result.(line);
+      file_content.(line) <- String.strip file_content.(line);
       let _, new_bal, _, is_comment = iter_line line balance in
-      if is_comment then result.(line) <- "";
+      if is_comment then file_content.(line) <- "";
       go new_bal (line + 1))
   in
-  go 0 0;
-  result
+  go 0 from
+;;
+
+let remove_const file_content loc =
+  let open Location in
+  let _, l1, p1 = get_pos_info loc.loc_start in
+  let _, l2, p2 = get_pos_info loc.loc_end in
+  let line_nums = range l1 l2 in
+  Sequence.iter line_nums ~f:(fun x ->
+      file_content.(x)
+        <- String.mapi file_content.(x) ~f:(fun i c ->
+               match x with
+               | y when y = l1 && l1 = l2 -> if i >= p1 && i < p2 then '#' else c
+               | y when y = l1 -> if i >= p1 then '#' else c
+               | y when y = l2 -> if i < p2 then '#' else c
+               | _ -> '#'))
+;;
+
+let expr_pat =
+  let open Tast_pattern in
+  estr drop
+;;
+
+let pat_pat =
+  let open Tast_pattern in
+  pstr drop
+;;
+
+let parse processed_file_content value loc pat =
+  Tast_pattern.parse
+    pat
+    loc
+    ~on_error:(fun _desc () -> ())
+    value
+    (fun () -> remove_const processed_file_content loc)
+    ()
+;;
+
+let process_pattern : type k. k Tast_pattern.gen_pat -> string array -> unit =
+ fun pat processed_file_content ->
+  match Tast_pattern.convert_gen_pat pat with
+  | Value x -> parse processed_file_content x pat.pat_loc pat_pat
+  | _ -> ()
 ;;
 
 let run _ file_content fallback =
-  let processed_file_content = remove_comment_lines file_content in
-  (*Array.iter processed_file_content ~f:print_endline;*)
+  let processed_file_content = Array.copy file_content in
   let open Tast_iterator in
   { fallback with
     structure_item =
@@ -60,11 +106,28 @@ let run _ file_content fallback =
         last_structure_item := false)
   ; value_binding =
       (fun self vb ->
+        let loc = vb.vb_loc in
         let is_child_of_str_item = !last_structure_item in
-        if is_child_of_str_item
-        then result := count_lines processed_file_content vb.vb_loc;
         last_structure_item := false;
         fallback.value_binding self vb;
-        last_structure_item := is_child_of_str_item)
+        last_structure_item := is_child_of_str_item;
+        if is_child_of_str_item
+        then (
+          remove_comment_lines processed_file_content @@ get_lines loc;
+          result := count_lines processed_file_content loc
+          (*print_endline "";
+            Array.iteri processed_file_content ~f:(fun x s ->
+                let from, till = get_lines loc in
+                if x >= from && x <= till then print_endline s)*)))
+  ; expr =
+      (fun self expr ->
+        if not expr.exp_loc.Location.loc_ghost
+        then parse processed_file_content expr expr.exp_loc expr_pat;
+        fallback.expr self expr)
+  ; pat =
+      (fun self pat ->
+        if not pat.pat_loc.Location.loc_ghost
+        then process_pattern pat processed_file_content;
+        fallback.pat self pat)
   }
 ;;

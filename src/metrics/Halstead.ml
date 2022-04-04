@@ -165,7 +165,7 @@ let atom_pat_comp =
   map0 (tpat_exception drop) ~f:"exception"
 ;;
 
-let process_pattern : type k. k Typedtree.general_pattern -> unit =
+let process_pattern : type k. k Tast_pattern.gen_pat -> unit =
  fun pat ->
   let open Typedtree in
   match Tast_pattern.convert_gen_pat pat with

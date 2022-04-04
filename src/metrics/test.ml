@@ -2,7 +2,8 @@ open Base
 
 let%test_unit "test_remove_comment_lines_1" =
   let file_content = [| ""; "   (* some comment *)  " |] in
-  [%test_eq: string array] (LOC.remove_comment_lines file_content) [| ""; "" |]
+  LOC.remove_comment_lines file_content (0, 1);
+  [%test_eq: string array] file_content [| ""; "" |]
 ;;
 
 let%test_unit "test_remove_comment_lines_2" =
@@ -14,8 +15,9 @@ let%test_unit "test_remove_comment_lines_2" =
      ; " not a comment "
     |]
   in
+  LOC.remove_comment_lines file_content (0, 4);
   [%test_eq: string array]
-    (LOC.remove_comment_lines file_content)
+    file_content
     [| ""; "a(* begin of comment"; ""; ""; "not a comment" |]
 ;;
 
@@ -28,12 +30,14 @@ let%test_unit "test_remove_comment_lines_3" =
      ; " not a comment "
     |]
   in
+  LOC.remove_comment_lines file_content (0, 4);
   [%test_eq: string array]
-    (LOC.remove_comment_lines file_content)
+    file_content
     [| ""; ""; ""; "end of comment *)a"; "not a comment" |]
 ;;
 
 let%test_unit "test_remove_comment_lines_4" =
   let file_content = [| ""; "  (* comment 1 *) (* comment 2 *)  " |] in
-  [%test_eq: string array] (LOC.remove_comment_lines file_content) [| ""; "" |]
+  LOC.remove_comment_lines file_content (0, 1);
+  [%test_eq: string array] file_content [| ""; "" |]
 ;;

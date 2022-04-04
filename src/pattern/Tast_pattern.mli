@@ -67,6 +67,7 @@ val eint : (int, 'a, 'b) t -> (expression, 'a, 'b) t
 val ebool : (expression, bool -> 'a, 'a) t
 val econst : (Asttypes.constant, 'a, 'b) t -> (expression, 'a, 'b) t
 val const_to_string : Asttypes.constant -> string
+val estr : (string, 'a, 'b) t -> (expression, 'a, 'b) t
 
 [%%if ocaml_version < (4, 11, 0)]
 
@@ -106,6 +107,7 @@ val pident : (string, 'a, 'b) t -> (Path.t, 'a, 'b) t
 *)
 
 val pconst : (Asttypes.constant, 'a, 'b) t -> (value_pat, 'a, 'b) t
+val pstr : (string, 'a, 'b) t -> (value_pat, 'a, 'b) t
 
 val tpat_construct_empty
   :  (Types.constructor_description, 'a, 'b) t
