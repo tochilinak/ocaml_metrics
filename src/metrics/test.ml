@@ -32,3 +32,8 @@ let%test_unit "test_remove_comment_lines_3" =
     (LOC.remove_comment_lines file_content)
     [| ""; ""; ""; "end of comment *)a"; "not a comment" |]
 ;;
+
+let%test_unit "test_remove_comment_lines_4" =
+  let file_content = [| ""; "  (* comment 1 *) (* comment 2 *)  " |] in
+  [%test_eq: string array] (LOC.remove_comment_lines file_content) [| ""; "" |]
+;;

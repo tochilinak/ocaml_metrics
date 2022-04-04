@@ -34,7 +34,7 @@ let remove_comment_lines file_content =
         match c1, c2 with
         | '(', '*' -> c2, bal + 1, r2, r1
         | '*', ')' -> c2, bal - 1, r2, r2
-        | _ -> if bal = 0 then c2, bal, r2, false else c2, bal, r2, r2)
+        | _ -> if bal = 0 && c2 != ' ' then c2, bal, r2, false else c2, bal, r2, r2)
   in
   let rec go balance line =
     if line < Array.length result
