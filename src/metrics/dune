@@ -1,7 +1,7 @@
 (library
  (name Metrics)
  (libraries zanuda_core Tast_pattern)
- (modules Function_count Halstead LOC Experiment)
+ (modules Function_count Halstead LOC Experiment test)
  (preprocess
-  (pps ppx_inline_test ppxlib.metaquot))
+  (pps ppx_inline_test ppx_assert ppxlib.metaquot))
  (inline_tests))

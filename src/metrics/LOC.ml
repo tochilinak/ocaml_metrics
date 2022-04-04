@@ -29,22 +29,22 @@ let remove_comment_lines file_content =
     (* last coordinate is true if comment_line *)
     String.fold
       result.(line)
-      ~init:(' ', init_bal, true, true, true)
-      ~f:(fun (c1, bal, r1, r2, r3) c2 ->
+      ~init:(' ', init_bal, true, true)
+      ~f:(fun (c1, bal, r1, r2) c2 ->
         match c1, c2 with
-        | '(', '*' -> c2, bal + 1, r2, r3, r1
-        | '*', ')' -> c2, bal - 1, r2, r3, r3
-        | _ -> if bal = 0 then c2, bal, r2, r3, false else c2, bal, r2, r3, r3)
+        | '(', '*' -> c2, bal + 1, r2, r1
+        | '*', ')' -> c2, bal - 1, r2, r2
+        | _ -> if bal = 0 then c2, bal, r2, false else c2, bal, r2, r2)
   in
   let rec go balance line =
     if line < Array.length result
     then (
       result.(line) <- String.strip result.(line);
-      let _, new_bal, _, _, is_comment = iter_line line balance in
+      let _, new_bal, _, is_comment = iter_line line balance in
       if is_comment then result.(line) <- "";
       go new_bal (line + 1))
   in
-  go 0 1;
+  go 0 0;
   result
 ;;
 
