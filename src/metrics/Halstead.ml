@@ -116,7 +116,8 @@ let process_not_atom_operand expr =
     List.iter list ~f:(fun x ->
         match x with
         | _, None -> ()
-        | Labelled s, _ | Optional s, _ -> add_operand @@ "label " ^ s
+        | (Labelled s, Some x | Optional s, Some x) when not x.exp_loc.Location.loc_ghost
+          -> add_operand @@ "label " ^ s
         | _ -> ())
   | _ -> ()
 ;;
