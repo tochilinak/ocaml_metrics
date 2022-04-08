@@ -9,7 +9,10 @@ end
 
 let function_metrics =
   let open Metrics in
-  [ (module Halstead : METRIC.FUNCTION); (module LOC : METRIC.FUNCTION) ]
+  [ (module Halstead : METRIC.FUNCTION)
+  ; (module LOC : METRIC.FUNCTION)
+  ; (module CyclomaticComplexity : METRIC.FUNCTION)
+  ]
 ;;
 
 let function_metrics_as_gen =
