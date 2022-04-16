@@ -23,21 +23,30 @@ let%test_unit "test_remove_comment_lines_2" =
 
 let%test_unit "test_remove_comment_lines_3" =
   let file_content =
-    [| ""
-     ; "  (* begin of comment  "
+    [| "  (* begin of comment  "
      ; " continiue comment "
      ; " end of comment *)a "
      ; " not a comment "
     |]
   in
-  LOC.remove_comment_lines file_content (0, 4);
+  LOC.remove_comment_lines file_content (0, 3);
   [%test_eq: string array]
     file_content
-    [| ""; ""; ""; "end of comment *)a"; "not a comment" |]
+    [| ""; ""; "end of comment *)a"; "not a comment" |]
 ;;
 
 let%test_unit "test_remove_comment_lines_4" =
   let file_content = [| ""; "  (* comment 1 *) (* comment 2 *)  " |] in
   LOC.remove_comment_lines file_content (0, 1);
   [%test_eq: string array] file_content [| ""; "" |]
+;;
+
+let%test_unit "test_remove_comment_lines_5" =
+  let file_content =
+    [| "*) let f = ()"; "(* x *)" |]
+  in
+  LOC.remove_comment_lines file_content (0, 1);
+  [%test_eq: string array]
+    file_content
+    [| "*) let f = ()"; "" |]
 ;;

@@ -36,7 +36,8 @@ let remove_comment_lines file_content (from, till) =
     String.fold
       file_content.(line)
       ~init:(' ', init_bal, true, true)
-      ~f:(fun (c1, bal, r1, r2) c2 ->
+      ~f:(fun (c1, bal1, r1, r2) c2 ->
+        let bal = max bal1 0 in
         match c1, c2 with
         | '(', '*' -> c2, bal + 1, r2, r1
         | '*', ')' -> c2, bal - 1, r2, r2
