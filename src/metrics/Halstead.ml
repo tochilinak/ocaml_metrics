@@ -113,11 +113,11 @@ let process_not_atom_operand_expr expr =
   match expr.exp_desc with
   | Texp_setfield (_, _, x, _) -> add_operand @@ "field " ^ x.lbl_name
   | Texp_function { arg_label } ->
-      (match arg_label with
-      | Labelled s | Optional s -> add_operand @@ "label " ^ s
-      | _ -> ())
-  | Texp_record {fields} -> Array.iter fields ~f:(fun (x, _) ->
-      add_operand @@ "field " ^ x.lbl_name)
+    (match arg_label with
+    | Labelled s | Optional s -> add_operand @@ "label " ^ s
+    | _ -> ())
+  | Texp_record { fields } ->
+    Array.iter fields ~f:(fun (x, _) -> add_operand @@ "field " ^ x.lbl_name)
   | Texp_apply (_, list) ->
     List.iter list ~f:(fun x ->
         match x with
@@ -170,8 +170,8 @@ let process_not_atom_value pat =
 let process_not_atom_operand_value pat =
   let open Typedtree in
   match pat.pat_desc with
-  | Tpat_record (fields, _) -> List.iter fields ~f:(fun (_, x, _) ->
-      add_operand @@ "field " ^ x.lbl_name)
+  | Tpat_record (fields, _) ->
+    List.iter fields ~f:(fun (_, x, _) -> add_operand @@ "field " ^ x.lbl_name)
   | _ -> ()
 ;;
 
@@ -189,8 +189,8 @@ let process_pattern : type k. k Tast_pattern.gen_pat -> unit =
       atom_pat_value
       x.pat_loc
       ~on_error:(fun _desc () ->
-          process_not_atom_operand_value x;
-          process_not_atom_value x.pat_desc)
+        process_not_atom_operand_value x;
+        process_not_atom_value x.pat_desc)
       x
       (fun id () -> add_operand id)
       ()
