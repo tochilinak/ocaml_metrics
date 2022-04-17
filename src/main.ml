@@ -20,6 +20,10 @@ let file_metrics =
 
 let metrics = function_metrics @ file_metrics
 
+let verbose_metrics =
+  ref (List.map metrics ~f:(fun (module L : METRIC.GENERAL) -> L.metric_id))
+;;
+
 let before_function func_info =
   List.iter metrics ~f:(fun (module L : METRIC.GENERAL) -> L.before_function func_info)
 ;;
@@ -27,7 +31,8 @@ let before_function func_info =
 let collect_results where (module L : METRIC.GENERAL) =
   List.iter (L.get_result ()) ~f:(fun (str, value) ->
       CollectedMetrics.add_result (L.metric_id ^ str) where value);
-  CollectedMetrics.add_extra_info where (L.extra_info ())
+  if List.mem !verbose_metrics L.metric_id ~equal:String.equal
+  then CollectedMetrics.add_extra_info where (L.extra_info ())
 ;;
 
 let collect_function_metrics filename func_name =
@@ -120,6 +125,9 @@ let process_cmt_typedtree filename typedtree =
 
 let () =
   Config.parse_args ();
+  (match Config.verbose_list () with
+  | None -> ()
+  | Some x -> verbose_metrics := x);
   let () =
     match Config.mode () with
     | Config.Unspecified -> ()
