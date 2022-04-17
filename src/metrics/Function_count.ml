@@ -7,6 +7,7 @@ let metric_id = "function_count"
 let result = ref 0
 let notes : string Queue.t = Queue.create ()
 let extra_info () = Queue.to_list notes
+let before_function _ = ()
 
 let reset () =
   result := 0;

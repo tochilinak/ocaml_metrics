@@ -8,14 +8,8 @@ let extra_info () = []
 let result = ref 0
 let last_structure_item = ref false
 let reset () = last_structure_item := false
-let inner_reset () = result := 0
+let before_function _ = result := 0
 let get_result () = [ "", float_of_int !result ]
-
-let range from till =
-  Sequence.unfold ~init:from ~f:(function
-      | x when x > till -> None
-      | x -> Some (x, x + 1))
-;;
 
 let get_lines loc =
   let open Location in

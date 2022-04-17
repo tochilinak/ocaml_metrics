@@ -91,3 +91,22 @@ let empty_loc loc =
   let s2, l2, p2 = get_pos_info loc.loc_end in
   String.equal s1 s2 && l1 = l2 && p1 = p2
 ;;
+
+let rec_flag_to_bool rec_flag =
+  let open Asttypes in
+  match rec_flag with
+  | Nonrecursive -> false
+  | Recursive -> true
+;;
+
+type function_info =
+  { is_rec : bool
+  ; name : string
+  ; func_num_in_block : int
+  }
+
+let range from till =
+  Sequence.unfold ~init:from ~f:(function
+      | x when x > till -> None
+      | x -> Some (x, x + 1))
+;;

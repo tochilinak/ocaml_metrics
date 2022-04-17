@@ -7,17 +7,22 @@ type context =
   { mutable res_simple : int
   ; mutable res_rec : int
   ; mutable cur_value_binding : Ident.t option
+  ; mutable is_rec : bool
   }
 
-let ctx : context = { res_simple = 0; res_rec = 0; cur_value_binding = None }
+let ctx : context =
+  { res_simple = 0; res_rec = 0; cur_value_binding = None; is_rec = false }
+;;
+
 let metric_id = "cyclomatic_complexity"
 let extra_info () = []
 let reset () = ()
 
-let inner_reset () =
+let before_function (func_info : function_info) =
   ctx.res_simple <- 1;
   ctx.res_rec <- 1;
-  ctx.cur_value_binding <- None
+  ctx.cur_value_binding <- None;
+  ctx.is_rec <- func_info.is_rec
 ;;
 
 let get_result () = [ "", float_of_int ctx.res_simple; "_rec", float_of_int ctx.res_rec ]
@@ -52,8 +57,9 @@ let run _ _ fallback =
     expr =
       (fun self expr ->
         let add = count_add expr in
+        let rec_add = if ctx.is_rec then count_rec expr else 0 in
         ctx.res_simple <- ctx.res_simple + add;
-        ctx.res_rec <- ctx.res_rec + add + count_rec expr;
+        ctx.res_rec <- ctx.res_rec + add + rec_add;
         fallback.expr self expr)
   ; value_binding =
       (fun self vb ->

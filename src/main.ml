@@ -3,22 +3,12 @@ open Base
 open Zanuda_core
 open Utils
 
-module Embed (F : METRIC.FUNCTION) : METRIC.GENERAL = struct
-  include F
-end
-
 let function_metrics =
   let open Metrics in
-  [ (module Halstead : METRIC.FUNCTION)
-  ; (module LOC : METRIC.FUNCTION)
-  ; (module CyclomaticComplexity : METRIC.FUNCTION)
+  [ (module Halstead : METRIC.GENERAL)
+  ; (module LOC : METRIC.GENERAL)
+  ; (module CyclomaticComplexity : METRIC.GENERAL)
   ]
-;;
-
-let function_metrics_as_gen =
-  List.map
-    function_metrics
-    ~f:(fun (module L : METRIC.FUNCTION) : (module METRIC.GENERAL) -> (module Embed (L)))
 ;;
 
 let file_metrics =
@@ -26,8 +16,10 @@ let file_metrics =
   [ (module Function_count : METRIC.GENERAL) (*; (module Experiment : METRIC.GENERAL)*) ]
 ;;
 
-let reset_function_metrics () =
-  List.iter function_metrics ~f:(fun (module L : METRIC.FUNCTION) -> L.inner_reset ())
+let metrics = function_metrics @ file_metrics
+
+let before_function func_info =
+  List.iter metrics ~f:(fun (module L : METRIC.GENERAL) -> L.before_function func_info)
 ;;
 
 let collect_results where (module L : METRIC.GENERAL) =
@@ -38,7 +30,7 @@ let collect_results where (module L : METRIC.GENERAL) =
 
 let collect_function_metrics filename func_name =
   let key = filename ^ ":" ^ func_name in
-  List.iter function_metrics_as_gen ~f:(collect_results key)
+  List.iter function_metrics ~f:(collect_results key)
 ;;
 
 let init_iterator filename =
@@ -50,10 +42,16 @@ let init_iterator filename =
     | _ -> Format.sprintf "<Value on %s>" loc
   in
   let open Tast_iterator in
-  let function_value_binding self x =
+  let function_value_binding rec_flag list_len self x =
     let value_name = get_value_name x in
+    let func_info =
+      { is_rec = rec_flag_to_bool rec_flag
+      ; name = value_name
+      ; func_num_in_block = list_len
+      }
+    in
     CollectedMetrics.add_function filename value_name;
-    reset_function_metrics ();
+    before_function func_info;
     self.value_binding self x;
     collect_function_metrics filename value_name
   in
@@ -61,11 +59,12 @@ let init_iterator filename =
     structure_item =
       (fun self str_item ->
         match str_item.str_desc with
-        | Tstr_value (_, list) ->
+        | Tstr_value (rec_flag, list) ->
+          let list_len = List.length list in
           List.iter list ~f:(fun x ->
               if empty_loc x.vb_loc
               then self.value_binding self x
-              else function_value_binding self x)
+              else function_value_binding rec_flag list_len self x)
         | _ -> default_iterator.structure_item self str_item)
   }
 ;;
@@ -84,7 +83,7 @@ let typed_on_structure info file_content typedtree =
       L.reset ();
       L.run info file_content)
     ~init:(init_iterator filename)
-    (file_metrics @ function_metrics_as_gen)
+    metrics
     typedtree;
   build_iterator
     ~f:(fun () -> CollectedMetrics.add_file filename)

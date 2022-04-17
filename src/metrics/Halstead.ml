@@ -9,7 +9,7 @@ let operator_dictionary : (string, int) Hashtbl.t = Hashtbl.create (module Strin
 let last_apply = ref false
 let reset () = ()
 
-let inner_reset () =
+let before_function _ =
   Hashtbl.clear operand_dictionary;
   Hashtbl.clear operator_dictionary;
   last_apply := false
