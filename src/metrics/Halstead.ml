@@ -4,15 +4,26 @@ open Zanuda_core
 open Zanuda_core.Utils
 
 let metric_id = "Halstead"
-let operand_dictionary : (string, int) Hashtbl.t = Hashtbl.create (module String)
-let operator_dictionary : (string, int) Hashtbl.t = Hashtbl.create (module String)
-let last_apply = ref false
+
+type context =
+  { operand_dictionary : (string, int) Hashtbl.t
+  ; operator_dictionary : (string, int) Hashtbl.t
+  ; mutable last_apply : bool
+  }
+
+let ctx =
+  { operand_dictionary = Hashtbl.create (module String)
+  ; operator_dictionary = Hashtbl.create (module String)
+  ; last_apply = false
+  }
+;;
+
 let reset () = ()
 
 let before_function _ =
-  Hashtbl.clear operand_dictionary;
-  Hashtbl.clear operator_dictionary;
-  last_apply := false
+  Hashtbl.clear ctx.operand_dictionary;
+  Hashtbl.clear ctx.operator_dictionary;
+  ctx.last_apply <- false
 ;;
 
 let add_to_dict dict operator_name =
@@ -46,19 +57,19 @@ let add_operator x =
       | Some y -> y
       | None -> x
     in
-    add_to_dict operator_dictionary name)
+    add_to_dict ctx.operator_dictionary name)
 ;;
 
-let add_operand = add_to_dict operand_dictionary
+let add_operand = add_to_dict ctx.operand_dictionary
 
 let calc_total_sum dict =
   Hashtbl.fold dict ~init:0 ~f:(fun ~key:_ ~data acc -> acc + data)
 ;;
 
-let calc_total_operators () = calc_total_sum operator_dictionary
-let calc_total_operands () = calc_total_sum operand_dictionary
-let calc_dist_operators () = Hashtbl.length operator_dictionary
-let calc_dist_operands () = Hashtbl.length operand_dictionary
+let calc_total_operators () = calc_total_sum ctx.operator_dictionary
+let calc_total_operands () = calc_total_sum ctx.operand_dictionary
+let calc_dist_operators () = Hashtbl.length ctx.operator_dictionary
+let calc_dist_operands () = Hashtbl.length ctx.operand_dictionary
 
 let get_result () =
   let _n1 = float_of_int (calc_dist_operators ()) in
@@ -84,9 +95,9 @@ let extra_info () =
         Format.sprintf "< %s > used %d times" key data :: acc)
   in
   [ "operators:" ]
-  @ get_str_list operator_dictionary
+  @ get_str_list ctx.operator_dictionary
   @ [ "\noperands:" ]
-  @ get_str_list operand_dictionary
+  @ get_str_list ctx.operand_dictionary
 ;;
 
 let atom_pat_expr =
@@ -137,14 +148,15 @@ let process_expression expr =
     ~on_error:(fun _desc () ->
       process_not_atom_operand_expr expr;
       match expr.exp_desc with
-      | Texp_apply _ -> last_apply := true
+      | Texp_apply _ -> ctx.last_apply <- true
       | x ->
-        last_apply := false;
+        ctx.last_apply <- false;
         process_not_atom_expr x)
     expr
     (fun id () ->
-      if !last_apply then add_operator id else add_operand id;
-      last_apply := false (*print_endline @@ id ^ " on " ^ (location_str expr.exp_loc)*))
+      if ctx.last_apply then add_operator id else add_operand id;
+      ctx.last_apply
+        <- false (*print_endline @@ id ^ " on " ^ (location_str expr.exp_loc)*))
     ()
 ;;
 
