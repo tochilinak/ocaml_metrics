@@ -3,7 +3,6 @@ module Format = Caml.Format
 module Hashtbl = Caml.Hashtbl
 open Zanuda_core
 open Zanuda_core.Utils
-open Graph
 
 let metric_id = "Cohesion"
 
@@ -54,7 +53,11 @@ let extra_info () =
          Format.sprintf "%s -> %s" (get_name u) (get_name v))
 ;;
 
-let get_result () = []
+let get_result () =
+  let g = Graph.init_graph ctx.num_of_methods in
+  List.iter ctx.edge_list ~f:(fun (u, v) -> Graph.add_edge g u v);
+  ["_LCOM_34", float_of_int @@ Graph.count_comp g]
+;;
 
 let run _ _ fallback =
   let open Tast_iterator in
