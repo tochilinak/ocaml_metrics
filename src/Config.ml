@@ -14,6 +14,7 @@ type t =
   ; mutable extra_includes : string list
   ; mutable verbose : bool
   ; mutable verbose_list : string list option
+  ; mutable metrics_list : string list option
   }
 
 let opts =
@@ -24,9 +25,11 @@ let opts =
   ; extra_includes = []
   ; verbose = false
   ; verbose_list = None
+  ; metrics_list = None
   }
 ;;
 
+let list_from_string str = String.split ~on:',' str
 let mode () = opts.mode
 let set_mode m = opts.mode <- m
 let set_in_dir s = set_mode (Dir s)
@@ -40,10 +43,14 @@ let prefix_to_add () = opts.prefix_to_add
 let verbose () = opts.verbose
 let set_verbose () = opts.verbose <- true
 let verbose_list () = opts.verbose_list
+
 let set_verbose_list str =
-    set_verbose ();
-    opts.verbose_list <- Some (String.split ~on:',' str)
+  set_verbose ();
+  opts.verbose_list <- Some (list_from_string str)
 ;;
+
+let metrics_list () = opts.metrics_list
+let set_metrics_list str = opts.metrics_list <- Some (list_from_string str)
 
 let recover_filepath filepath =
   let filepath =
@@ -75,6 +82,10 @@ let parse_args () =
       , Arg.String set_verbose_list
       , "List of metrics classes with verbose output. Example: -v-list \
          Halstead,cohesion,lines_of_code" )
+    ; ( "-met-list"
+      , Arg.String set_metrics_list
+      , "List of metrics to show. Example: -met-list \
+         Halstead,cohesion_LCOM_34,lines_of_code" )
     ]
     set_in_dir
     "Set root directory of dune project"

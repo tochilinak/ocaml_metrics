@@ -19,9 +19,18 @@ let file_metrics =
 ;;
 
 let metrics = function_metrics @ file_metrics
+let metric_id_list = List.map metrics ~f:(fun (module L : METRIC.GENERAL) -> L.metric_id)
+let verbose_metrics = ref metric_id_list
+let metrics_to_show = ref metric_id_list
 
-let verbose_metrics =
-  ref (List.map metrics ~f:(fun (module L : METRIC.GENERAL) -> L.metric_id))
+let change_metric_lists new_verb_metrics new_metrics_to_show =
+  let change list new_list =
+    match new_list with
+    | None -> ()
+    | Some x -> list := x
+  in
+  change verbose_metrics new_verb_metrics;
+  change metrics_to_show new_metrics_to_show
 ;;
 
 let before_function func_info =
@@ -30,7 +39,10 @@ let before_function func_info =
 
 let collect_results where (module L : METRIC.GENERAL) =
   List.iter (L.get_result ()) ~f:(fun (str, value) ->
-      CollectedMetrics.add_result (L.metric_id ^ str) where value);
+      let cur_metric = L.metric_id ^ str in
+      if List.exists !metrics_to_show ~f:(fun x ->
+             String.is_substring cur_metric ~substring:x)
+      then CollectedMetrics.add_result cur_metric where value);
   if List.mem !verbose_metrics L.metric_id ~equal:String.equal
   then CollectedMetrics.add_extra_info where (L.extra_info ())
 ;;
@@ -125,9 +137,7 @@ let process_cmt_typedtree filename typedtree =
 
 let () =
   Config.parse_args ();
-  (match Config.verbose_list () with
-  | None -> ()
-  | Some x -> verbose_metrics := x);
+  change_metric_lists (Config.verbose_list ()) (Config.metrics_list ());
   let () =
     match Config.mode () with
     | Config.Unspecified -> ()

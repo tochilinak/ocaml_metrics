@@ -50,13 +50,15 @@ let print_func_metrics verbose filename func =
   Format.printf "\n"
 ;;
 
+let default_find dict key =
+  match Hashtbl.find dict key with
+  | None -> []
+  | Some list -> list
+;;
+
 let print_file_metrics verbose filename =
-  let metrics = Hashtbl.find_exn metric_results filename in
-  let functions =
-    match Hashtbl.find functions_in_file filename with
-    | None -> []
-    | Some list -> list
-  in
+  let metrics = default_find metric_results filename in
+  let functions = default_find functions_in_file filename in
   Format.printf "FILE %s\n" filename;
   Format.printf "\n______File_metrics______\n\n";
   List.iter metrics ~f:(fun (x, y) -> print_metric x y);
