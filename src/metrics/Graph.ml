@@ -22,8 +22,9 @@ let count_comp g =
   let visited = Array.create ~len:n false in
   let rec dfs v =
     visited.(v) <- true;
-    Sequence.iter (range 0 (n - 1)) ~f:(fun u ->
-        if (not visited.(u)) && g.edge_matrix.(v).(u) then dfs u)
+    Sequence.iter
+      (range 0 (n - 1))
+      ~f:(fun u -> if (not visited.(u)) && g.edge_matrix.(v).(u) then dfs u)
   in
   let rec go v acc =
     if v >= n

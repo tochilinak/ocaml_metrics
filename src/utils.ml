@@ -101,12 +101,18 @@ let rec_flag_to_bool rec_flag =
 
 type function_info =
   { is_rec : bool
-  ; name : string
-  ; func_num_in_block : int
+  ; name : Ident.t option
   }
 
 let range from till =
   Sequence.unfold ~init:from ~f:(function
       | x when x > till -> None
       | x -> Some (x, x + 1))
+;;
+
+let get_vb_name vb =
+  let open Typedtree in
+  match vb.vb_pat.pat_desc with
+  | Tpat_var (x, _) -> Some x
+  | _ -> None
 ;;

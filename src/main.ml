@@ -13,7 +13,9 @@ let function_metrics =
 
 let file_metrics =
   let open Metrics in
-  [ (module Function_count : METRIC.GENERAL) (*; (module Experiment : METRIC.GENERAL)*) ]
+  [ (module Function_count : METRIC.GENERAL)
+  ; (module Cohesion : METRIC.GENERAL) (*; (module Experiment : METRIC.GENERAL)*)
+  ]
 ;;
 
 let metrics = function_metrics @ file_metrics
@@ -37,19 +39,14 @@ let init_iterator filename =
   let open Typedtree in
   let get_value_name vb =
     let loc = short_location_str vb.vb_loc in
-    match vb.vb_pat.pat_desc with
-    | Tpat_var (x, _) -> Format.sprintf "%s <%s>" (Ident.name x) loc
-    | _ -> Format.sprintf "<Value on %s>" loc
+    match get_vb_name vb with
+    | Some x -> Format.sprintf "%s <%s>" (Ident.name x) loc
+    | None -> Format.sprintf "<Value on %s>" loc
   in
   let open Tast_iterator in
-  let function_value_binding rec_flag list_len self x =
+  let function_value_binding rec_flag self x =
     let value_name = get_value_name x in
-    let func_info =
-      { is_rec = rec_flag_to_bool rec_flag
-      ; name = value_name
-      ; func_num_in_block = list_len
-      }
-    in
+    let func_info = { is_rec = rec_flag_to_bool rec_flag; name = get_vb_name x } in
     CollectedMetrics.add_function filename value_name;
     before_function func_info;
     self.value_binding self x;
@@ -60,11 +57,10 @@ let init_iterator filename =
       (fun self str_item ->
         match str_item.str_desc with
         | Tstr_value (rec_flag, list) ->
-          let list_len = List.length list in
           List.iter list ~f:(fun x ->
               if empty_loc x.vb_loc
               then self.value_binding self x
-              else function_value_binding rec_flag list_len self x)
+              else function_value_binding rec_flag self x)
         | _ -> default_iterator.structure_item self str_item)
   }
 ;;

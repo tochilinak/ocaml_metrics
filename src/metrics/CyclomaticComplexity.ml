@@ -64,10 +64,7 @@ let run _ _ fallback =
   ; value_binding =
       (fun self vb ->
         let old_vb_name = ctx.cur_value_binding in
-        ctx.cur_value_binding
-          <- (match vb.vb_pat.pat_desc with
-             | Tpat_var (x, _) -> Some x
-             | _ -> None);
+        ctx.cur_value_binding <- get_vb_name vb;
         fallback.value_binding self vb;
         ctx.cur_value_binding <- old_vb_name)
   }

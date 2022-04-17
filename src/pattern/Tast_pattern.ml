@@ -92,6 +92,8 @@ let drop : 'a 'b. ('a, 'b, 'b) t =
       k)
 ;;
 
+let rej = T (fun _ loc _ _ -> fail loc "rej")
+
 let cst ~to_string ?(equal = Poly.equal) v =
   T
     (fun ctx loc x k ->

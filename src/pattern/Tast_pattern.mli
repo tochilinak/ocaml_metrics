@@ -21,6 +21,7 @@ val __ : ('a, 'a -> 'b, 'b) t
 val __' : ('a, 'a Location.loc -> 'b, 'b) t
 
 val drop : ('a, 'b, 'b) t
+val rej : ('a, 'b, 'c) t
 val nil : ('a list, 'b, 'b) t
 val ( ^:: ) : ('a, 'b, 'c) t -> ('a list, 'c, 'd) t -> ('a list, 'b, 'd) t
 val none : ('a option, 'b, 'b) t
@@ -58,6 +59,7 @@ val map_result : ('a, 'b, 'c) t -> f:('c -> 'd) -> ('a, 'b, 'd) t
 open Typedtree
 
 val apply : ('a, 'a -> 'b, 'b) t
+val cst : to_string:('a -> string) -> ?equal:('a -> 'a -> bool) -> 'a -> ('a, 'b, 'b) t
 val int : int -> (int, 'a, 'a) t
 val string : string -> (string, 'a, 'a) t
 val lident : (string, 'a, 'b) t -> (Longident.t, 'a, 'b) t

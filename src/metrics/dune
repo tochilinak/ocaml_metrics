@@ -6,6 +6,7 @@
   Halstead
   LOC
   CyclomaticComplexity
+  Cohesion
   Experiment
   Graph
   test)

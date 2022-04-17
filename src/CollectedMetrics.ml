@@ -25,7 +25,7 @@ let add_extra_info where extra_info =
   Hashtbl.update metric_extra_info where ~f:(fun v ->
       match v with
       | None -> extra_info
-      | Some list -> list @ extra_info)
+      | Some list -> list @ ("" :: extra_info))
 ;;
 
 let print_extra_info verbose where =
