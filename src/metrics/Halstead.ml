@@ -22,7 +22,7 @@ let add_to_dict dict operator_name =
       | Some x -> x + 1)
 ;;
 
-let not_operator = [ "id @@"; "Texp_function" ]
+let not_operator = [ "Texp_function" ]
 
 let change_name : (string, string) Hashtbl.t =
   Hashtbl.of_alist_exn
@@ -107,11 +107,17 @@ let process_not_atom_expr expr =
   add_operator @@ get_name expr
 ;;
 
-let process_not_atom_operand expr =
+let process_not_atom_operand_expr expr =
   let open Typedtree in
   let open Asttypes in
   match expr.exp_desc with
   | Texp_setfield (_, _, x, _) -> add_operand @@ "field " ^ x.lbl_name
+  | Texp_function { arg_label } ->
+      (match arg_label with
+      | Labelled s | Optional s -> add_operand @@ "label " ^ s
+      | _ -> ())
+  | Texp_record {fields} -> Array.iter fields ~f:(fun (x, _) ->
+      add_operand @@ "field " ^ x.lbl_name)
   | Texp_apply (_, list) ->
     List.iter list ~f:(fun x ->
         match x with
@@ -129,7 +135,7 @@ let process_expression expr =
     atom_pat_expr
     loc
     ~on_error:(fun _desc () ->
-      process_not_atom_operand expr;
+      process_not_atom_operand_expr expr;
       match expr.exp_desc with
       | Texp_apply _ -> last_apply := true
       | x ->
@@ -161,6 +167,14 @@ let process_not_atom_value pat =
   add_operator @@ get_name pat
 ;;
 
+let process_not_atom_operand_value pat =
+  let open Typedtree in
+  match pat.pat_desc with
+  | Tpat_record (fields, _) -> List.iter fields ~f:(fun (_, x, _) ->
+      add_operand @@ "field " ^ x.lbl_name)
+  | _ -> ()
+;;
+
 let atom_pat_comp =
   let open Tast_pattern in
   map0 (tpat_exception drop) ~f:"exception"
@@ -174,7 +188,9 @@ let process_pattern : type k. k Tast_pattern.gen_pat -> unit =
     Tast_pattern.parse
       atom_pat_value
       x.pat_loc
-      ~on_error:(fun _desc () -> process_not_atom_value x.pat_desc)
+      ~on_error:(fun _desc () ->
+          process_not_atom_operand_value x;
+          process_not_atom_value x.pat_desc)
       x
       (fun id () -> add_operand id)
       ()
