@@ -33,7 +33,8 @@ let add_to_dict dict operator_name =
       | Some x -> x + 1)
 ;;
 
-let not_operator = [ "Texp_function" ]
+let apply_operator = [ "id Stdlib.@@"; "id Base.@@" ]
+let not_operator = "Texp_function" :: apply_operator
 
 let change_name : (string, string) Hashtbl.t =
   Hashtbl.of_alist_exn
@@ -155,8 +156,7 @@ let process_expression expr =
     expr
     (fun id () ->
       if ctx.last_apply then add_operator id else add_operand id;
-      ctx.last_apply
-        <- false (*print_endline @@ id ^ " on " ^ (location_str expr.exp_loc)*))
+      ctx.last_apply <- List.mem apply_operator id ~equal:String.equal)
     ()
 ;;
 

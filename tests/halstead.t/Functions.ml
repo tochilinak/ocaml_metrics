@@ -27,3 +27,7 @@ let inc (a, b, c) arr {field=y} =
     | [| x |] -> (tup, [| x + 1 |], record)
     | _ -> (tup, [||], record)
 ;;
+
+let h x = g @@ x
+
+let h1 x = inc (1, 2, 3) [||] @@ id x

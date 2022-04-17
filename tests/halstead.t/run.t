@@ -4,6 +4,8 @@
   FILE Functions.ml
   ______File_metrics______
   Declared functions:
+  h1 <33:0-33:37>
+  h <31:0-31:16>
   inc <23:0-28:30>
   inc_field <21:0-21:40>
   part <15:0-15:43>
@@ -13,6 +15,36 @@
   id <3:0-3:12>
   f <1:0-1:10>
   ____Function_metrics____
+  FUNCTION h1 <33:0-33:37> in Functions.ml
+  Halstead_effort: 76.08
+  Halstead_difficulty: 2.40
+  Halstead_volume: 31.70
+  Halstead_length: 10.00
+  Halstead_vocabulary: 9.00
+  _______extra_info_______
+  operators:
+  < array > used 1 times
+  < id inc > used 1 times
+  < id id > used 1 times
+  < tuple > used 1 times
+  operands:
+  < const 1 > used 1 times
+  < id x > used 2 times
+  < id h1 > used 1 times
+  < const 2 > used 1 times
+  < const 3 > used 1 times
+  FUNCTION h <31:0-31:16> in Functions.ml
+  Halstead_effort: 4.75
+  Halstead_difficulty: 0.75
+  Halstead_volume: 6.34
+  Halstead_length: 4.00
+  Halstead_vocabulary: 3.00
+  _______extra_info_______
+  operators:
+  < id g > used 1 times
+  operands:
+  < id x > used 2 times
+  < id h > used 1 times
   FUNCTION inc <23:0-28:30> in Functions.ml
   Halstead_effort: 1238.47
   Halstead_difficulty: 6.75
