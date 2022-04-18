@@ -124,19 +124,19 @@ let process_not_atom_operand_expr expr =
   let open Asttypes in
   match expr.exp_desc with
   | Texp_setfield (_, _, x, _) -> add_operand @@ "field " ^ x.lbl_name
-  | Texp_function { arg_label } ->
+  | Texp_record { fields } ->
+    Array.iter fields ~f:(fun (x, _) -> add_operand @@ "field " ^ x.lbl_name)
+  (*| Texp_function { arg_label } ->
     (match arg_label with
     | Labelled s | Optional s -> add_operand @@ "label " ^ s
     | _ -> ())
-  | Texp_record { fields } ->
-    Array.iter fields ~f:(fun (x, _) -> add_operand @@ "field " ^ x.lbl_name)
   | Texp_apply (_, list) ->
     List.iter list ~f:(fun x ->
         match x with
         | _, None -> ()
         | (Labelled s, Some x | Optional s, Some x) when not x.exp_loc.Location.loc_ghost
           -> add_operand @@ "label " ^ s
-        | _ -> ())
+        | _ -> ())*)
   | _ -> ()
 ;;
 

@@ -88,32 +88,29 @@
   < id inc_field > used 1 times
   < field field > used 2 times
   FUNCTION part <15:0-15:43> in Functions.ml
-  Halstead_effort: 12.19
-  Halstead_difficulty: 0.75
-  Halstead_volume: 16.25
-  Halstead_length: 7.00
-  Halstead_vocabulary: 5.00
+  Halstead_effort: 10.00
+  Halstead_difficulty: 0.83
+  Halstead_volume: 12.00
+  Halstead_length: 6.00
+  Halstead_vocabulary: 4.00
   _______extra_info_______
   operators:
   < id labelled > used 1 times
   operands:
   < id part > used 1 times
-  < label f > used 1 times
   < id x > used 2 times
   < id f > used 2 times
   FUNCTION labelled <13:0-13:51> in Functions.ml
-  Halstead_effort: 31.50
-  Halstead_difficulty: 1.17
-  Halstead_volume: 27.00
-  Halstead_length: 9.00
-  Halstead_vocabulary: 8.00
+  Halstead_effort: 22.62
+  Halstead_difficulty: 1.25
+  Halstead_volume: 18.09
+  Halstead_length: 7.00
+  Halstead_vocabulary: 6.00
   _______extra_info_______
   operators:
   < id g > used 1 times
   < id f > used 1 times
   operands:
-  < label label > used 1 times
-  < label f > used 1 times
   < id x > used 2 times
   < id labelled > used 1 times
   < id g > used 1 times
