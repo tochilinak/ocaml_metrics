@@ -19,8 +19,8 @@
   Halstead_effort: 0.00
   Halstead_difficulty: 0.00
   Halstead_volume: 2.00
-  Halstead_length: 2.00
-  Halstead_vocabulary: 2.00
+  Halstead_length: 2
+  Halstead_vocabulary: 2
   _______extra_info_______
   operators:
   operands:
@@ -30,8 +30,8 @@
   Halstead_effort: 0.00
   Halstead_difficulty: 0.00
   Halstead_volume: 3.00
-  Halstead_length: 3.00
-  Halstead_vocabulary: 2.00
+  Halstead_length: 3
+  Halstead_vocabulary: 2
   _______extra_info_______
   operators:
   operands:
@@ -41,8 +41,8 @@
   Halstead_effort: 4.75
   Halstead_difficulty: 0.75
   Halstead_volume: 6.34
-  Halstead_length: 4.00
-  Halstead_vocabulary: 3.00
+  Halstead_length: 4
+  Halstead_vocabulary: 3
   _______extra_info_______
   operators:
   < id id > used 1 times
@@ -53,8 +53,8 @@
   Halstead_effort: 139.48
   Halstead_difficulty: 2.75
   Halstead_volume: 50.72
-  Halstead_length: 16.00
-  Halstead_vocabulary: 9.00
+  Halstead_length: 16
+  Halstead_vocabulary: 9
   _______extra_info_______
   operators:
   < construct :: > used 3 times
@@ -71,8 +71,8 @@
   Halstead_effort: 22.62
   Halstead_difficulty: 1.25
   Halstead_volume: 18.09
-  Halstead_length: 7.00
-  Halstead_vocabulary: 6.00
+  Halstead_length: 7
+  Halstead_vocabulary: 6
   _______extra_info_______
   operators:
   < id g > used 1 times
@@ -86,8 +86,8 @@
   Halstead_effort: 10.00
   Halstead_difficulty: 0.83
   Halstead_volume: 12.00
-  Halstead_length: 6.00
-  Halstead_vocabulary: 4.00
+  Halstead_length: 6
+  Halstead_vocabulary: 4
   _______extra_info_______
   operators:
   < id labelled > used 1 times
@@ -99,8 +99,8 @@
   Halstead_effort: 40.71
   Halstead_difficulty: 1.75
   Halstead_volume: 23.26
-  Halstead_length: 9.00
-  Halstead_vocabulary: 6.00
+  Halstead_length: 9
+  Halstead_vocabulary: 6
   _______extra_info_______
   operators:
   < Texp_setfield > used 1 times
@@ -114,8 +114,8 @@
   Halstead_effort: 1238.47
   Halstead_difficulty: 6.75
   Halstead_volume: 183.48
-  Halstead_length: 44.00
-  Halstead_vocabulary: 18.00
+  Halstead_length: 44
+  Halstead_vocabulary: 18
   _______extra_info_______
   operators:
   < Texp_let > used 2 times
@@ -141,8 +141,8 @@
   Halstead_effort: 4.75
   Halstead_difficulty: 0.75
   Halstead_volume: 6.34
-  Halstead_length: 4.00
-  Halstead_vocabulary: 3.00
+  Halstead_length: 4
+  Halstead_vocabulary: 3
   _______extra_info_______
   operators:
   < id g > used 1 times
@@ -153,8 +153,8 @@
   Halstead_effort: 76.08
   Halstead_difficulty: 2.40
   Halstead_volume: 31.70
-  Halstead_length: 10.00
-  Halstead_vocabulary: 9.00
+  Halstead_length: 10
+  Halstead_vocabulary: 9
   _______extra_info_______
   operators:
   < array > used 1 times

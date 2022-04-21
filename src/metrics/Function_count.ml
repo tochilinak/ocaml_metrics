@@ -15,7 +15,7 @@ let reset () =
 ;;
 
 let update () = result := !result + 1
-let get_result () = [ "", float_of_int !result ]
+let get_result () = [ "", Int_result !result ]
 
 let run _ _ fallback =
   let pat =

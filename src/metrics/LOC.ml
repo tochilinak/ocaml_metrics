@@ -9,7 +9,7 @@ let result = ref 0
 let last_structure_item = ref false
 let reset () = last_structure_item := false
 let before_function _ = result := 0
-let get_result () = [ "", float_of_int !result ]
+let get_result () = [ "", Int_result !result ]
 
 let get_lines loc =
   let open Location in

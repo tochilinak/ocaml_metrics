@@ -25,7 +25,7 @@ let before_function (func_info : function_info) =
   ctx.is_rec <- func_info.is_rec
 ;;
 
-let get_result () = [ "", float_of_int ctx.res_simple; "_rec", float_of_int ctx.res_rec ]
+let get_result () = [ "", Int_result ctx.res_simple; "_rec", Int_result ctx.res_rec ]
 
 let count_add expr =
   let open Typedtree in

@@ -73,20 +73,24 @@ let calc_dist_operators () = Hashtbl.length ctx.operator_dictionary
 let calc_dist_operands () = Hashtbl.length ctx.operand_dictionary
 
 let get_result () =
-  let _n1 = float_of_int (calc_dist_operators ()) in
-  let _n2 = float_of_int (calc_dist_operands ()) in
-  let _N1 = float_of_int (calc_total_operators ()) in
-  let _N2 = float_of_int (calc_total_operands ()) in
-  let _n = _n1 +. _n2 in
-  let _N = _N1 +. _N2 in
-  let vol = Float.log _n /. Float.log 2. *. _N in
-  let diff = _n1 /. 2. *. (_N2 /. _n2) in
+  let dist_operators = calc_dist_operators () in
+  let dist_operands = calc_dist_operands () in
+  let total_operators = calc_total_operators () in
+  let total_operands = calc_total_operands () in
+  let f = float_of_int in
+  let dist_sum = (f dist_operators) +. (f dist_operands) in
+  let total_sum = (f total_operators) +. (f total_operands) in
+  let vol = Float.log dist_sum /. Float.log 2. *. total_sum in
+  let diff = if dist_operators != 0
+            then (f dist_operators) /. 2. *. ((f total_operands) /. (f dist_operands))
+            else 0.
+  in
   let eff = vol *. diff in
-  [ "_vocabulary", _n1 +. _n2
-  ; "_length", _N1 +. _N2
-  ; "_volume", vol
-  ; "_difficulty", diff
-  ; "_effort", eff
+  [ "_vocabulary", Int_result (dist_operators + dist_operands)
+  ; "_length", Int_result (total_operators + total_operands)
+  ; "_volume", Float_result vol
+  ; "_difficulty", Float_result diff
+  ; "_effort", Float_result eff
   ]
 ;;
 

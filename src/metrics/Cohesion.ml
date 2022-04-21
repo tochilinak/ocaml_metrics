@@ -56,7 +56,7 @@ let extra_info () =
 let get_result () =
   let g = Graph.init_graph ctx.num_of_methods in
   List.iter ctx.edge_list ~f:(fun (u, v) -> Graph.add_edge g u v);
-  [ "_LCOM_34", float_of_int @@ Graph.count_comp g ]
+  [ "_LCOM_34", Int_result (Graph.count_comp g) ]
 ;;
 
 let run _ _ fallback =

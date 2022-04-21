@@ -5,7 +5,7 @@ open Utils
 type context =
   { file_list : string Queue.t
   ; functions_in_file : (string, string list) Hashtbl.t
-  ; metric_results : (string, (string * float) list) Hashtbl.t
+  ; metric_results : (string, (string * metric_result) list) Hashtbl.t
   ; metric_extra_info : (string, string list) Hashtbl.t
   }
 
@@ -46,7 +46,10 @@ let print_extra_info verbose where =
       Format.printf "\n")
 ;;
 
-let print_metric metric_id value = Format.printf "%s: %.2f\n" metric_id value
+let print_metric metric_id value =
+    match value with
+    | Int_result x -> Format.printf "%s: %d\n" metric_id x
+    | Float_result x -> Format.printf "%s: %.2f\n" metric_id x
 
 let print_func_metrics verbose filename func =
   let key = filename ^ ":" ^ func in

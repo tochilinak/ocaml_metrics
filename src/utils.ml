@@ -116,3 +116,5 @@ let get_vb_name vb =
   | Tpat_var (x, _) -> Some x
   | _ -> None
 ;;
+
+type metric_result = Int_result of int | Float_result of float
