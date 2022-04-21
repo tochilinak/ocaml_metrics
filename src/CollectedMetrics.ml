@@ -53,7 +53,7 @@ let print_metric metric_id value =
 
 let print_func_metrics verbose filename func =
   let key = filename ^ ":" ^ func in
-  let metrics = Hashtbl.find_exn ctx.metric_results key in
+  let metrics = List.rev @@ Hashtbl.find_exn ctx.metric_results key in
   Format.printf "FUNCTION %s in %s\n" func filename;
   List.iter metrics ~f:(fun (x, y) -> print_metric x y);
   print_extra_info verbose key;
@@ -67,7 +67,7 @@ let default_find dict key =
 ;;
 
 let print_file_metrics verbose filename =
-  let metrics = default_find ctx.metric_results filename in
+  let metrics = List.rev @@ default_find ctx.metric_results filename in
   let functions = List.rev @@ default_find ctx.functions_in_file filename in
   Format.printf "FILE %s\n" filename;
   Format.printf "\n______File_metrics______\n\n";
