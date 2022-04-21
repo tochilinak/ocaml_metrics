@@ -2,19 +2,20 @@ open Base
 open Caml.Format
 open Utils
 
-type context = {
-    file_list : string Queue.t;
-    functions_in_file : (string, string list) Hashtbl.t;
-    metric_results : (string, (string * float) list) Hashtbl.t;
-    metric_extra_info : (string, string list) Hashtbl.t
-}
+type context =
+  { file_list : string Queue.t
+  ; functions_in_file : (string, string list) Hashtbl.t
+  ; metric_results : (string, (string * float) list) Hashtbl.t
+  ; metric_extra_info : (string, string list) Hashtbl.t
+  }
 
-let ctx : context = {
-    file_list = Queue.create ();
-    functions_in_file = Hashtbl.create (module String);
-    metric_results = Hashtbl.create (module String);
-    metric_extra_info = Hashtbl.create (module String)
-}
+let ctx : context =
+  { file_list = Queue.create ()
+  ; functions_in_file = Hashtbl.create (module String)
+  ; metric_results = Hashtbl.create (module String)
+  ; metric_extra_info = Hashtbl.create (module String)
+  }
+;;
 
 let add_value table key value =
   Hashtbl.update table key ~f:(fun v ->
