@@ -127,23 +127,12 @@ let with_info filename f =
     f
 ;;
 
-let read_file filename =
-  let lines : string Queue.t = Queue.create () in
-  let ic = open_in filename in
-  (try
-     Queue.enqueue lines "";
-     while true do
-       Queue.enqueue lines (input_line ic)
-     done
-   with
-  | End_of_file -> close_in ic);
-  Queue.to_array lines
-;;
-
 let process_cmt_typedtree filename typedtree =
   if Config.verbose () then printfn "Analyzing file: %s" filename;
   (*Format.printf "Typedtree ML:\n%a\n%!" Printtyped.implementation typedtree;*)
-  let file_content = read_file @@ cut_build_dir filename in
+  let file_content =
+    List.to_array @@ ("" :: (Stdio.In_channel.read_lines @@ cut_build_dir filename))
+  in
   with_info filename (fun info -> typed_on_structure info file_content typedtree)
 ;;
 

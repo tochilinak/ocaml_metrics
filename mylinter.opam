@@ -15,6 +15,7 @@ depends: [
   "sexplib"
   "ppx_inline_test"
   "base"
+  "stdio"
   "odoc" {with-doc}
 ]
 build: [

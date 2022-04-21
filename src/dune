@@ -24,6 +24,7 @@
  (modules main)
  (libraries
   base
+  stdio
   yojson
   ppxlib
   compiler-libs.common
