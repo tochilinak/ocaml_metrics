@@ -65,7 +65,7 @@ let default_find dict key =
 
 let print_file_metrics verbose filename =
   let metrics = default_find ctx.metric_results filename in
-  let functions = default_find ctx.functions_in_file filename in
+  let functions = List.rev @@ default_find ctx.functions_in_file filename in
   Format.printf "FILE %s\n" filename;
   Format.printf "\n______File_metrics______\n\n";
   List.iter metrics ~f:(fun (x, y) -> print_metric x y);
