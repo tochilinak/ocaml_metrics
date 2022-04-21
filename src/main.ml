@@ -37,19 +37,30 @@ let before_function func_info =
   List.iter metrics ~f:(fun (module L : METRIC.GENERAL) -> L.before_function func_info)
 ;;
 
-let collect_results where (module L : METRIC.GENERAL) =
+let collect_results add_extra_info add_metrics (module L : METRIC.GENERAL) =
   List.iter (L.get_result ()) ~f:(fun (str, value) ->
       let cur_metric = L.metric_id ^ str in
       if List.exists !metrics_to_show ~f:(fun x ->
              String.is_substring cur_metric ~substring:x)
-      then CollectedMetrics.add_result cur_metric where value);
+      then add_metrics cur_metric value);
   if List.mem !verbose_metrics L.metric_id ~equal:String.equal
-  then CollectedMetrics.add_extra_info where (L.extra_info ())
+  then add_extra_info (L.extra_info ())
+;;
+
+let collect_func_results filename func_name =
+  collect_results
+    (CollectedMetrics.add_extra_info_func filename func_name)
+    (CollectedMetrics.add_func_result filename func_name)
+;;
+
+let collect_file_results filename =
+  collect_results
+    (CollectedMetrics.add_extra_info_file filename)
+    (CollectedMetrics.add_file_result filename)
 ;;
 
 let collect_function_metrics filename func_name =
-  let key = filename ^ ":" ^ func_name in
-  List.iter function_metrics ~f:(collect_results key)
+  List.iter function_metrics ~f:(collect_func_results filename func_name)
 ;;
 
 let init_iterator filename =
@@ -100,7 +111,8 @@ let typed_on_structure info file_content typedtree =
     typedtree;
   build_iterator
     ~f:(fun () -> CollectedMetrics.add_file filename)
-    ~compose:(fun (module L : METRIC.GENERAL) () -> collect_results filename (module L))
+    ~compose:(fun (module L : METRIC.GENERAL) () ->
+      collect_file_results filename (module L))
     ~init:()
     file_metrics
 ;;

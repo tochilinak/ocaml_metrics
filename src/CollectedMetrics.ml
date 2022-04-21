@@ -7,6 +7,8 @@ type context =
   ; functions_in_file : (string, string list) Hashtbl.t
   ; metric_results : (string, (string * metric_result) list) Hashtbl.t
   ; metric_extra_info : (string, string list) Hashtbl.t
+  ; mutable longest_file_metrics : int
+  ; mutable longest_func_metrics : int
   }
 
 let ctx : context =
@@ -14,6 +16,8 @@ let ctx : context =
   ; functions_in_file = Hashtbl.create (module String)
   ; metric_results = Hashtbl.create (module String)
   ; metric_extra_info = Hashtbl.create (module String)
+  ; longest_file_metrics = 0
+  ; longest_func_metrics = 0
   }
 ;;
 
@@ -26,13 +30,30 @@ let add_value table key value =
 
 let add_file = Queue.enqueue ctx.file_list
 let add_function filename func = add_value ctx.functions_in_file filename func
-let add_result metric_id where res = add_value ctx.metric_results where (metric_id, res)
+
+let add_file_result filename metric_id res =
+  ctx.longest_file_metrics <- max ctx.longest_file_metrics (String.length metric_id);
+  add_value ctx.metric_results filename (metric_id, res)
+;;
+
+let key_for_func filename func_name = filename ^ ":" ^ func_name
+
+let add_func_result filename func_name metric_id res =
+  ctx.longest_func_metrics <- max ctx.longest_func_metrics (String.length metric_id);
+  add_value ctx.metric_results (key_for_func filename func_name) (metric_id, res)
+;;
 
 let add_extra_info where extra_info =
   Hashtbl.update ctx.metric_extra_info where ~f:(fun v ->
       match v with
       | None -> extra_info
       | Some list -> list @ ("" :: extra_info))
+;;
+
+let add_extra_info_file filename = add_extra_info filename
+
+let add_extra_info_func filename func_name =
+  add_extra_info (key_for_func filename func_name)
 ;;
 
 let print_extra_info verbose where =
@@ -46,16 +67,19 @@ let print_extra_info verbose where =
       Format.printf "\n")
 ;;
 
-let print_metric metric_id value =
-    match value with
-    | Int_result x -> Format.printf "%s: %d\n" metric_id x
-    | Float_result x -> Format.printf "%s: %.2f\n" metric_id x
+let print_metric width metric_id value =
+  let fstr = "%" ^ Int.to_string width ^ "s: " in
+  Format.printf (Scanf.format_from_string fstr "%s") metric_id;
+  match value with
+  | Int_result x -> Format.printf "%d\n" x
+  | Float_result x -> Format.printf "%.2f\n" x
+;;
 
 let print_func_metrics verbose filename func =
   let key = filename ^ ":" ^ func in
   let metrics = List.rev @@ Hashtbl.find_exn ctx.metric_results key in
   Format.printf "FUNCTION %s in %s\n" func filename;
-  List.iter metrics ~f:(fun (x, y) -> print_metric x y);
+  List.iter metrics ~f:(fun (x, y) -> print_metric ctx.longest_func_metrics x y);
   print_extra_info verbose key;
   Format.printf "\n"
 ;;
@@ -71,7 +95,7 @@ let print_file_metrics verbose filename =
   let functions = List.rev @@ default_find ctx.functions_in_file filename in
   Format.printf "FILE %s\n" filename;
   Format.printf "\n______File_metrics______\n\n";
-  List.iter metrics ~f:(fun (x, y) -> print_metric x y);
+  List.iter metrics ~f:(fun (x, y) -> print_metric ctx.longest_file_metrics x y);
   print_extra_info verbose filename;
   Format.printf "\nDeclared functions:\n";
   List.iter functions ~f:(fun x -> Format.printf "%s\n" x);

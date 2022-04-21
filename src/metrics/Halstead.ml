@@ -78,12 +78,13 @@ let get_result () =
   let total_operators = calc_total_operators () in
   let total_operands = calc_total_operands () in
   let f = float_of_int in
-  let dist_sum = (f dist_operators) +. (f dist_operands) in
-  let total_sum = (f total_operators) +. (f total_operands) in
+  let dist_sum = f dist_operators +. f dist_operands in
+  let total_sum = f total_operators +. f total_operands in
   let vol = Float.log dist_sum /. Float.log 2. *. total_sum in
-  let diff = if dist_operators != 0
-            then (f dist_operators) /. 2. *. ((f total_operands) /. (f dist_operands))
-            else 0.
+  let diff =
+    if dist_operators != 0
+    then f dist_operators /. 2. *. (f total_operands /. f dist_operands)
+    else 0.
   in
   let eff = vol *. diff in
   [ "_vocabulary", Int_result (dist_operators + dist_operands)

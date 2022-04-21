@@ -117,4 +117,6 @@ let get_vb_name vb =
   | _ -> None
 ;;
 
-type metric_result = Int_result of int | Float_result of float
+type metric_result =
+  | Int_result of int
+  | Float_result of float
