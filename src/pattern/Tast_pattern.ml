@@ -92,7 +92,7 @@ let drop : 'a 'b. ('a, 'b, 'b) t =
       k)
 ;;
 
-let rej = T (fun _ loc _ _ -> fail loc "rej")
+let reject = T (fun _ loc _ _ -> fail loc "reject")
 
 let cst ~to_string ?(equal = Poly.equal) v =
   T

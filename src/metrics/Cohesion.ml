@@ -75,7 +75,7 @@ let run _ _ fallback =
               Hashtbl.fold
                 (fun key id acc -> acc ||| map0 (one_pident key) ~f:id)
                 ctx.func_id
-                rej
+                reject
             in
             texp_ident cur_pident
           in

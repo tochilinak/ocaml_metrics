@@ -21,7 +21,7 @@ val __ : ('a, 'a -> 'b, 'b) t
 val __' : ('a, 'a Location.loc -> 'b, 'b) t
 
 val drop : ('a, 'b, 'b) t
-val rej : ('a, 'b, 'c) t
+val reject : ('a, 'b, 'c) t
 val nil : ('a list, 'b, 'b) t
 val ( ^:: ) : ('a, 'b, 'c) t -> ('a list, 'c, 'd) t -> ('a list, 'b, 'd) t
 val none : ('a option, 'b, 'b) t
