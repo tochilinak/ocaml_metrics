@@ -2,7 +2,6 @@
   $ mylinter . -v-list Halstead -met-list Halstead | sed -re "/^$/d"
   Analyzing file: _build/default/Functions.ml
   FILE Functions.ml
-  ______File_metrics______
   Declared functions:
   f <1:0-1:10>
   id <3:0-3:12>
