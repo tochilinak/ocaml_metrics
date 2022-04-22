@@ -13,8 +13,10 @@ let groups_of_metrics =
   ]
 ;;
 
-let metrics_group_id_list = List.map groups_of_metrics
-                                     ~f:(fun (module L : METRIC.GROUP) -> L.metrics_group_id)
+let metrics_group_id_list =
+  List.map groups_of_metrics ~f:(fun (module L : METRIC.GROUP) -> L.metrics_group_id)
+;;
+
 let verbose_metrics = ref metrics_group_id_list
 let metrics_to_show = ref metrics_group_id_list
 
@@ -29,10 +31,17 @@ let change_metrics_lists new_verb_metrics new_metrics_to_show =
 ;;
 
 let before_function func_info =
-  List.iter groups_of_metrics ~f:(fun (module L : METRIC.GROUP) -> L.before_function func_info)
+  List.iter groups_of_metrics ~f:(fun (module L : METRIC.GROUP) ->
+      L.before_function func_info)
 ;;
 
-let collect_results ~metrics_group_id ~get_result ~get_extra_info ~add_result ~add_extra_info =
+let collect_results
+    ~metrics_group_id
+    ~get_result
+    ~get_extra_info
+    ~add_result
+    ~add_extra_info
+  =
   List.iter (get_result ()) ~f:(fun (str, value) ->
       let cur_metrics = metrics_group_id ^ "_" ^ str in
       if List.exists !metrics_to_show ~f:(fun x ->

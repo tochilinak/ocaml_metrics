@@ -3,17 +3,13 @@ module Format = Caml.Format
 open Zanuda_core
 open Zanuda_core.Utils
 
-type context = {
-    mutable result : int;
-    notes : string Queue.t;
-}
+type context =
+  { mutable result : int
+  ; notes : string Queue.t
+  }
 
-let ctx = {
-    result = 0;
-    notes = Queue.create ()
-}
-
-let metrics_group_id = "function-count"
+let ctx = { result = 0; notes = Queue.create () }
+let metrics_group_id = "(test)"
 let before_function _ = ()
 let get_function_metrics_result () = []
 let get_function_extra_info () = []
@@ -25,7 +21,7 @@ let reset () =
 ;;
 
 let update () = ctx.result <- ctx.result + 1
-let get_module_metrics_result () = [ "", Int_result ctx.result ]
+let get_module_metrics_result () = [ "func-count", Int_result ctx.result ]
 
 let run _ _ fallback =
   let pat =

@@ -3,16 +3,12 @@ module Format = Caml.Format
 open Zanuda_core
 open Zanuda_core.Utils
 
-type context = {
-    mutable result : int;
-    mutable last_structure_item : bool
-}
+type context =
+  { mutable result : int
+  ; mutable last_structure_item : bool
+  }
 
-let ctx = {
-    result = 0;
-    last_structure_item = false
-}
-
+let ctx = { result = 0; last_structure_item = false }
 let metrics_group_id = "LOC-based"
 let get_module_metrics_result () = []
 let get_module_extra_info () = []
