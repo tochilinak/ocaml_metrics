@@ -4,22 +4,22 @@ module Hashtbl = Caml.Hashtbl
 open Zanuda_core
 open Zanuda_core.Utils
 
+module MyGraph = Graph.Imperative.Graph.Concrete(Ident);;
+
 type context =
   { mutable num_of_methods : int
   ; mutable possible_arcs : int
   ; mutable cur_function : Ident.t option
-  ; func_id : (Ident.t, int) Hashtbl.t
-  ; func_by_id : (int, Ident.t) Hashtbl.t
-  ; mutable edge_list : (int * int) list
+  ; mutable graph : MyGraph.t
   }
+
+module Builder = Graph.Builder.I(MyGraph)
 
 let ctx : context =
   { num_of_methods = 0
   ; possible_arcs = 0
   ; cur_function = None
-  ; func_id = Hashtbl.create 10
-  ; func_by_id = Hashtbl.create 10
-  ; edge_list = []
+  ; graph = Builder.empty ()
   }
 ;;
 
@@ -31,9 +31,7 @@ let reset () =
   ctx.num_of_methods <- 0;
   ctx.possible_arcs <- 0;
   ctx.cur_function <- None;
-  Hashtbl.clear ctx.func_id;
-  Hashtbl.clear ctx.func_by_id;
-  ctx.edge_list <- []
+  ctx.graph <- Builder.empty ()
 ;;
 
 let before_function func_info =
@@ -44,21 +42,21 @@ let before_function func_info =
     let loop = if func_info.is_rec then 1 else 0 in
     ctx.possible_arcs <- ctx.possible_arcs + loop + ctx.num_of_methods;
     ctx.num_of_methods <- ctx.num_of_methods + 1;
-    Hashtbl.add ctx.func_id x (ctx.num_of_methods - 1);
-    Hashtbl.add ctx.func_by_id (ctx.num_of_methods - 1) x
+    ctx.graph <- Builder.add_vertex ctx.graph x
 ;;
 
 let get_module_extra_info () =
-  let get_name v = Ident.name @@ Hashtbl.find ctx.func_by_id v in
-  "COHESION GRAPH:"
-  :: List.map ctx.edge_list ~f:(fun (u, v) ->
-         Format.sprintf "%s -> %s" (get_name u) (get_name v))
+  "COHESION GRAPH:" ::
+  MyGraph.fold_edges
+    (fun u v acc -> (Format.sprintf "%s -> %s" (Ident.name u) (Ident.name v)) :: acc)
+    ctx.graph
+    []
 ;;
 
+module Components = Graph.Components.Undirected(MyGraph)
+
 let get_module_metrics_result () =
-  let g = Graph.init_graph ctx.num_of_methods in
-  List.iter ctx.edge_list ~f:(fun (u, v) -> Graph.add_edge g u v);
-  [ "LCOM34", Int_result (Graph.count_comp g) ]
+  [ "LCOM34", Int_result (fst @@ Components.components ctx.graph)]
 ;;
 
 let run _ _ fallback =
@@ -67,31 +65,31 @@ let run _ _ fallback =
   { fallback with
     expr =
       (fun self expr ->
-        let look_for_edge =
+        let look_for_edge cur_func =
           let pat =
             let open Tast_pattern in
             let cur_pident =
               let one_pident ident =
                 path_pident @@ cst ~to_string:Ident.name ~equal:Ident.equal ident
               in
-              Hashtbl.fold
-                (fun key id acc -> acc ||| map0 (one_pident key) ~f:id)
-                ctx.func_id
+              MyGraph.fold_vertex
+                (fun func acc -> acc ||| map0 (one_pident func) ~f:func)
+                ctx.graph
                 reject
             in
             texp_ident cur_pident
           in
-          let cur_id = ctx.num_of_methods - 1 in
           Tast_pattern.parse
             pat
             expr.exp_loc
             ~on_error:(fun _desc () -> ())
             expr
-            (fun id () -> ctx.edge_list <- (cur_id, id) :: ctx.edge_list)
+            (fun func () -> ctx.graph <- Builder.add_edge ctx.graph cur_func func)
+          ()
         in
         (match ctx.cur_function with
         | None -> ()
-        | Some _ -> look_for_edge ());
+        | Some x -> look_for_edge x);
         fallback.expr self expr)
   }
 ;;

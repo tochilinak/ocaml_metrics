@@ -46,11 +46,3 @@ let%test_unit "test_remove_comment_lines_5" =
   LOC.remove_comment_lines file_content (0, 1);
   [%test_eq: string array] file_content [| "*) let f = ()"; "" |]
 ;;
-
-let%test_unit "test_count_comp" =
-  let g = Graph.init_graph 5 in
-  Graph.add_edge g 0 1;
-  Graph.add_edge g 1 2;
-  Graph.add_edge g 3 4;
-  [%test_eq: int] 2 @@ Graph.count_comp g
-;;

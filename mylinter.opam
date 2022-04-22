@@ -16,6 +16,7 @@ depends: [
   "ppx_inline_test"
   "base"
   "stdio"
+  "ocamlgraph"
   "odoc" {with-doc}
 ]
 build: [
