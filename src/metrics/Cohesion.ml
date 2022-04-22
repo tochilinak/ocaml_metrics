@@ -4,8 +4,6 @@ module Hashtbl = Caml.Hashtbl
 open Zanuda_core
 open Zanuda_core.Utils
 
-let metric_id = "cohesion"
-
 type context =
   { mutable num_of_methods : int
   ; mutable possible_arcs : int
@@ -24,6 +22,10 @@ let ctx : context =
   ; edge_list = []
   }
 ;;
+
+let metrics_group_id = "cohesion"
+let get_function_metrics_result () = []
+let get_function_extra_info () = []
 
 let reset () =
   ctx.num_of_methods <- 0;
@@ -46,17 +48,17 @@ let before_function func_info =
     Hashtbl.add ctx.func_by_id (ctx.num_of_methods - 1) x
 ;;
 
-let extra_info () =
+let get_module_extra_info () =
   let get_name v = Ident.name @@ Hashtbl.find ctx.func_by_id v in
   "COHESION GRAPH:"
   :: List.map ctx.edge_list ~f:(fun (u, v) ->
          Format.sprintf "%s -> %s" (get_name u) (get_name v))
 ;;
 
-let get_result () =
+let get_module_metrics_result () =
   let g = Graph.init_graph ctx.num_of_methods in
   List.iter ctx.edge_list ~f:(fun (u, v) -> Graph.add_edge g u v);
-  [ "_LCOM_34", Int_result (Graph.count_comp g) ]
+  [ "LCOM34", Int_result (Graph.count_comp g) ]
 ;;
 
 let run _ _ fallback =

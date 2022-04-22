@@ -14,9 +14,11 @@ let ctx : context =
   { res_simple = 0; res_rec = 0; cur_value_binding = None; is_rec = false }
 ;;
 
-let metric_id = "cyclomatic_complexity"
-let extra_info () = []
+let metrics_group_id = "CC-based"
 let reset () = ()
+let get_function_extra_info () = []
+let get_module_metrics_result () = []
+let get_module_extra_info () = []
 
 let before_function (func_info : function_info) =
   ctx.res_simple <- 1;
@@ -25,7 +27,7 @@ let before_function (func_info : function_info) =
   ctx.is_rec <- func_info.is_rec
 ;;
 
-let get_result () = [ "", Int_result ctx.res_simple; "_rec", Int_result ctx.res_rec ]
+let get_function_metrics_result () = [ "CC", Int_result ctx.res_simple; "CC-rec", Int_result ctx.res_rec ]
 
 let count_add expr =
   let open Typedtree in

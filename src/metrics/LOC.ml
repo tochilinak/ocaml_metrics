@@ -3,13 +3,23 @@ module Format = Caml.Format
 open Zanuda_core
 open Zanuda_core.Utils
 
-let metric_id = "lines_of_code"
-let extra_info () = []
-let result = ref 0
-let last_structure_item = ref false
-let reset () = last_structure_item := false
-let before_function _ = result := 0
-let get_result () = [ "", Int_result !result ]
+type context = {
+    mutable result : int;
+    mutable last_structure_item : bool
+}
+
+let ctx = {
+    result = 0;
+    last_structure_item = false
+}
+
+let metrics_group_id = "LOC-based"
+let get_module_metrics_result () = []
+let get_module_extra_info () = []
+let get_function_extra_info () = []
+let reset () = ctx.last_structure_item <- false
+let before_function _ = ctx.result <- 0
+let get_function_metrics_result () = [ "LOC", Int_result ctx.result ]
 
 let get_lines loc =
   let open Location in
@@ -96,20 +106,20 @@ let run _ file_content fallback =
   { fallback with
     structure_item =
       (fun self str_item ->
-        last_structure_item := true;
+        ctx.last_structure_item <- true;
         fallback.structure_item self str_item;
-        last_structure_item := false)
+        ctx.last_structure_item <- false)
   ; value_binding =
       (fun self vb ->
         let loc = vb.vb_loc in
-        let is_child_of_str_item = !last_structure_item in
-        last_structure_item := false;
+        let is_child_of_str_item = ctx.last_structure_item in
+        ctx.last_structure_item <- false;
         fallback.value_binding self vb;
-        last_structure_item := is_child_of_str_item;
+        ctx.last_structure_item <- is_child_of_str_item;
         if is_child_of_str_item
         then (
           remove_comment_lines processed_file_content @@ get_lines loc;
-          result := count_lines processed_file_content loc
+          ctx.result <- count_lines processed_file_content loc
           (*print_endline "";
             Array.iteri processed_file_content ~f:(fun x s ->
                 let from, till = get_lines loc in

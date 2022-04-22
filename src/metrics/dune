@@ -7,7 +7,6 @@
   LOC
   CyclomaticComplexity
   Cohesion
-  Experiment
   Graph
   test)
  (preprocess

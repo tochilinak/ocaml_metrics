@@ -3,27 +3,22 @@ open Base
 open Zanuda_core
 open Utils
 
-let function_metrics =
+let groups_of_metrics =
   let open Metrics in
-  [ (module Halstead : METRIC.GENERAL)
-  ; (module LOC : METRIC.GENERAL)
-  ; (module CyclomaticComplexity : METRIC.GENERAL)
+  [ (module Halstead : METRIC.GROUP)
+  ; (module LOC : METRIC.GROUP)
+  ; (module CyclomaticComplexity : METRIC.GROUP)
+  ; (module Function_count : METRIC.GROUP)
+  ; (module Cohesion : METRIC.GROUP)
   ]
 ;;
 
-let file_metrics =
-  let open Metrics in
-  [ (module Function_count : METRIC.GENERAL)
-  ; (module Cohesion : METRIC.GENERAL) (*; (module Experiment : METRIC.GENERAL)*)
-  ]
-;;
+let metrics_group_id_list = List.map groups_of_metrics
+                                     ~f:(fun (module L : METRIC.GROUP) -> L.metrics_group_id)
+let verbose_metrics = ref metrics_group_id_list
+let metrics_to_show = ref metrics_group_id_list
 
-let metrics = function_metrics @ file_metrics
-let metric_id_list = List.map metrics ~f:(fun (module L : METRIC.GENERAL) -> L.metric_id)
-let verbose_metrics = ref metric_id_list
-let metrics_to_show = ref metric_id_list
-
-let change_metric_lists new_verb_metrics new_metrics_to_show =
+let change_metrics_lists new_verb_metrics new_metrics_to_show =
   let change list new_list =
     match new_list with
     | None -> ()
@@ -34,33 +29,39 @@ let change_metric_lists new_verb_metrics new_metrics_to_show =
 ;;
 
 let before_function func_info =
-  List.iter metrics ~f:(fun (module L : METRIC.GENERAL) -> L.before_function func_info)
+  List.iter groups_of_metrics ~f:(fun (module L : METRIC.GROUP) -> L.before_function func_info)
 ;;
 
-let collect_results add_extra_info add_metrics (module L : METRIC.GENERAL) =
-  List.iter (L.get_result ()) ~f:(fun (str, value) ->
-      let cur_metric = L.metric_id ^ str in
+let collect_results ~metrics_group_id ~get_result ~get_extra_info ~add_result ~add_extra_info =
+  List.iter (get_result ()) ~f:(fun (str, value) ->
+      let cur_metrics = metrics_group_id ^ "_" ^ str in
       if List.exists !metrics_to_show ~f:(fun x ->
-             String.is_substring cur_metric ~substring:x)
-      then add_metrics cur_metric value);
-  if List.mem !verbose_metrics L.metric_id ~equal:String.equal
-  then add_extra_info (L.extra_info ())
+             String.is_substring cur_metrics ~substring:x)
+      then add_result cur_metrics value);
+  if List.mem !verbose_metrics metrics_group_id ~equal:String.equal
+  then add_extra_info (get_extra_info ())
 ;;
 
-let collect_func_results filename func_name =
+let collect_function_results filename func_name (module L : METRIC.GROUP) =
   collect_results
-    (CollectedMetrics.add_extra_info_func filename func_name)
-    (CollectedMetrics.add_func_result filename func_name)
+    ~metrics_group_id:L.metrics_group_id
+    ~get_result:L.get_function_metrics_result
+    ~get_extra_info:L.get_function_extra_info
+    ~add_result:(CollectedMetrics.add_func_result filename func_name)
+    ~add_extra_info:(CollectedMetrics.add_extra_info_func filename func_name)
 ;;
 
-let collect_file_results filename =
+let collect_module_results filename (module L : METRIC.GROUP) =
   collect_results
-    (CollectedMetrics.add_extra_info_file filename)
-    (CollectedMetrics.add_file_result filename)
+    ~metrics_group_id:L.metrics_group_id
+    ~get_result:L.get_module_metrics_result
+    ~get_extra_info:L.get_module_extra_info
+    ~add_result:(CollectedMetrics.add_file_result filename)
+    ~add_extra_info:(CollectedMetrics.add_extra_info_file filename)
 ;;
 
 let collect_function_metrics filename func_name =
-  List.iter function_metrics ~f:(collect_func_results filename func_name)
+  List.iter groups_of_metrics ~f:(collect_function_results filename func_name)
 ;;
 
 let init_iterator filename =
@@ -103,18 +104,18 @@ let typed_on_structure info file_content typedtree =
   let filename = cut_build_dir info.source_file in
   build_iterator
     ~f:(fun o -> o.Tast_iterator.structure o)
-    ~compose:(fun (module L : METRIC.GENERAL) ->
+    ~compose:(fun (module L : METRIC.GROUP) ->
       L.reset ();
       L.run info file_content)
     ~init:(init_iterator filename)
-    metrics
+    groups_of_metrics
     typedtree;
   build_iterator
     ~f:(fun () -> CollectedMetrics.add_file filename)
-    ~compose:(fun (module L : METRIC.GENERAL) () ->
-      collect_file_results filename (module L))
+    ~compose:(fun (module L : METRIC.GROUP) () ->
+      collect_module_results filename (module L))
     ~init:()
-    file_metrics
+    groups_of_metrics
 ;;
 
 let with_info filename f =
@@ -138,7 +139,7 @@ let process_cmt_typedtree filename typedtree =
 
 let () =
   Config.parse_args ();
-  change_metric_lists (Config.verbose_list ()) (Config.metrics_list ());
+  change_metrics_lists (Config.verbose_list ()) (Config.metrics_list ());
   let () =
     match Config.mode () with
     | Config.Unspecified -> ()

@@ -3,8 +3,6 @@ module Format = Caml.Format
 open Zanuda_core
 open Zanuda_core.Utils
 
-let metric_id = "Halstead"
-
 type context =
   { operand_dictionary : (string, int) Hashtbl.t
   ; operator_dictionary : (string, int) Hashtbl.t
@@ -18,7 +16,10 @@ let ctx =
   }
 ;;
 
+let metrics_group_id = "Halstead"
 let reset () = ()
+let get_module_metrics_result () = []
+let get_module_extra_info () = []
 
 let before_function _ =
   Hashtbl.clear ctx.operand_dictionary;
@@ -72,7 +73,7 @@ let calc_total_operands () = calc_total_sum ctx.operand_dictionary
 let calc_dist_operators () = Hashtbl.length ctx.operator_dictionary
 let calc_dist_operands () = Hashtbl.length ctx.operand_dictionary
 
-let get_result () =
+let get_function_metrics_result () =
   let dist_operators = calc_dist_operators () in
   let dist_operands = calc_dist_operands () in
   let total_operators = calc_total_operators () in
@@ -87,15 +88,15 @@ let get_result () =
     else 0.
   in
   let eff = vol *. diff in
-  [ "_vocabulary", Int_result (dist_operators + dist_operands)
-  ; "_length", Int_result (total_operators + total_operands)
-  ; "_volume", Float_result vol
-  ; "_difficulty", Float_result diff
-  ; "_effort", Float_result eff
+  [ "vocabulary", Int_result (dist_operators + dist_operands)
+  ; "length", Int_result (total_operators + total_operands)
+  ; "volume", Float_result vol
+  ; "difficulty", Float_result diff
+  ; "effort", Float_result eff
   ]
 ;;
 
-let extra_info () =
+let get_function_extra_info () =
   let get_str_list dict =
     Hashtbl.fold dict ~init:[] ~f:(fun ~key ~data acc ->
         Format.sprintf "< %s > used %d times" key data :: acc)

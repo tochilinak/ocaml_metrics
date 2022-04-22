@@ -3,19 +3,29 @@ module Format = Caml.Format
 open Zanuda_core
 open Zanuda_core.Utils
 
-let metric_id = "function_count"
-let result = ref 0
-let notes : string Queue.t = Queue.create ()
-let extra_info () = Queue.to_list notes
+type context = {
+    mutable result : int;
+    notes : string Queue.t;
+}
+
+let ctx = {
+    result = 0;
+    notes = Queue.create ()
+}
+
+let metrics_group_id = "function-count"
 let before_function _ = ()
+let get_function_metrics_result () = []
+let get_function_extra_info () = []
+let get_module_extra_info () = Queue.to_list ctx.notes
 
 let reset () =
-  result := 0;
-  Queue.clear notes
+  ctx.result <- 0;
+  Queue.clear ctx.notes
 ;;
 
-let update () = result := !result + 1
-let get_result () = [ "", Int_result !result ]
+let update () = ctx.result <- ctx.result + 1
+let get_module_metrics_result () = [ "", Int_result ctx.result ]
 
 let run _ _ fallback =
   let pat =
@@ -46,12 +56,12 @@ let run _ _ fallback =
             let msg =
               Format.asprintf
                 "Function #%d position: %s\nFunction #%d type: %s"
-                !result
+                ctx.result
                 (location_str loc)
-                !result
+                ctx.result
                 type_str
             in
-            Queue.enqueue notes msg)
+            Queue.enqueue ctx.notes msg)
           ();
         fallback.expr self expr)
   }
