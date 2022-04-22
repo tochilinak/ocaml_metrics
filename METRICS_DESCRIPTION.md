@@ -1,41 +1,62 @@
-<table>
+Metrics names are printed in the following format: `<metrics group id>_<metrics id>`.
+
+<table align="center">
     <thead>
         <tr>
-            <th>Metrics group</th>
-            <th>Metrics</th>
-            <th>Original description</th>
-            <th>Notes</th>
+            <th>Metrics group id</th>
+            <th>Description</th>
+            <th>Metrics id</th>
+            <th>Description</th>
         </tr>
     </thead>
-    <tbody>
+    <tbody align="center">
         <tr>
-            <td rowspan=5>Cohesion</td>
-            <td>LCOM1</td>
-            <td>Number of pairs of methods that do not share attributes</td>
-            <td></td>
+            <td rowspan=5>cohesion</td>
+            <td rowspan=5>
+                <b>Class cohesion metrics</b><br />
+                Alternative to class is a module.<br />
+                Alternative to both attributes and methods are functions.
+            </td>
+            <td align="center">LCOM1</td>
+            <td><i>Original definition:</i> Number of pairs of methods that do not share attributes</td>
         </tr>
         <tr>
             <td>LCOM2</td>
-            <td>P = Number of pairs of methods that do not share attributes<br />
+            <td><i>Original definition:</i><br />
+                P = Number of pairs of methods that do not share attributes<br />
                 Q = Number of pairs of methods that share attributes<br />
                 LCOM2 = max(P - Q, 0)</td>
-            <td></td>
         </tr>
         <tr>
-            <td>LCOM3</td>
-            <td>Number of disjoint components in the graph that represents each method as a<br />
-                node and the sharing of at least one attribute as an edge</td>
-            <td></td>
-        </tr>
-        <tr>
-            <td>LCOM4</td>
-            <td>Similar to LCOM3 and additional edges are used to represent method invocations</td>
-            <td></td>
+            <td>LCOM34</td>
+            <td>LCOM3 = Number of disjoint components in the graph that represents each method as a
+                node and the sharing of at least one attribute as an edge <br />
+                LCOM4 = Similar to LCOM3 and additional edges are used to represent method invocations <br />
+                <i>In our interpretation LCOM3 and LCOM4 give the same values.</i>
+            </td>
         </tr>
         <tr>
             <td>LCOM5</td>
-            <td></td>
-            <td></td>
+            <td>
+                <i>Original definition:</i><br />
+                <img src="https://render.githubusercontent.com/render/math?math=\frac{a-kl}{l-kl}">, where
+                <img src="https://render.githubusercontent.com/render/math?math=l">
+                is the number of attributes,
+                <img src="https://render.githubusercontent.com/render/math?math=k">
+                is the number of methods, and
+                <img src="https://render.githubusercontent.com/render/math?math=a">
+                is the summation of the number of distinct attributes accessed by each method in a class
+            </td>
+        </tr>
+        <tr>
+            <td>COH</td>
+            <td>
+                 <img src="https://render.githubusercontent.com/render/math?math=\frac{a}{kl}">, where 
+                 <img src="https://render.githubusercontent.com/render/math?math=a">,
+                 <img src="https://render.githubusercontent.com/render/math?math=k">, and
+                 <img src="https://render.githubusercontent.com/render/math?math=l">
+                 have the same definitions as above
+            </td>
         </tr>
     </tbody>
 </table>
