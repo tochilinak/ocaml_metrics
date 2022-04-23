@@ -93,6 +93,7 @@ Metrics names are printed in the following format: `[metrics group id]_[metrics 
         <tr>
             <td rowspan=5>Halstead</td>
             <td rowspan=5>
+                <b> Halstead complexity measures </b> <br/>
                 n1 = the number of distinct operators <br/>
                 n2 = the number of distinct operands <br/>
                 N1 = the total number of operators <br/>
@@ -130,6 +131,22 @@ Metrics names are printed in the following format: `[metrics group id]_[metrics 
             <td>
                 Effort:
                 V * D
+            </td>
+        </tr>
+        <tr>
+            <td rowspan=2>LOC-based</td>
+            <td rowspan=2>
+                <b> Lines of code </b> <br/>
+            </td>
+            <td align="center">all</td>
+            <td>
+                Number of lines in function definition
+            </td>
+        </tr>
+        <tr>
+            <td align="center">code</td>
+            <td>
+                Exclude comment and blank lines
             </td>
         </tr>
     </tbody>
