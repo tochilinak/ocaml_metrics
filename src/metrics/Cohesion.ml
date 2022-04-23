@@ -91,9 +91,20 @@ let get_module_metrics_result () =
   let lcom2 =
     max 0 @@ ((2 * lcom1) - (ctx.num_of_methods * (ctx.num_of_methods - 1) / 2))
   in
+  let f = float_of_int in
+  let a = MyDigraph.nb_edges ctx.digraph in
+  let e = ctx.possible_arcs in
+  let l = ctx.num_of_methods in
+  let lcom5 =
+    let down = l - e in
+    if down == 0 then 0. else (f @@ (a - e)) /. f down
+  in
+  let coh = if e == 0 then 1. else f a /. f e in
   [ "LCOM1", Int_result lcom1
   ; "LCOM2", Int_result lcom2
   ; "LCOM34", Int_result (fst @@ Components.components ctx.graph)
+  ; "LCOM5", Float_result lcom5
+  ; "COH", Float_result coh
   ]
 ;;
 
