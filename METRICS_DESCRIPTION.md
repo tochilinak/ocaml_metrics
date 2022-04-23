@@ -84,6 +84,7 @@ Metrics names are printed in the following format: `[metrics group id]_[metrics 
         <tr>
             <td align="center">CC-mod</td>
             <td>
+                Modified cyclomatic complexity. <br/>
                 Like CC-ord but count <br/>
                 <code> match E0 with | P1 -> E1 ... | PN -> EN </code> <br/>
                 as 1 decision point instead of (N - 1) (but still count guards).
