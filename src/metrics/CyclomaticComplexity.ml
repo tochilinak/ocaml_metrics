@@ -31,7 +31,8 @@ let get_function_metrics_result () =
   [ "CC", Int_result ctx.res_simple; "CC-rec", Int_result ctx.res_rec ]
 ;;
 
-let count_add expr =
+let pat =
+  let open Tast_pattern in
   let open Typedtree in
   let count_case_add case_list =
     List.fold case_list ~init:0 ~f:(fun acc case ->
@@ -39,12 +40,20 @@ let count_add expr =
         | None -> acc + 1
         | Some _ -> acc + 2)
   in
-  match expr.exp_desc with
-  | Texp_ifthenelse _ | Texp_while _ | Texp_for _ -> 1
-  | Texp_match (_, cases, _) -> count_case_add cases - 1
-  | Texp_function { cases } -> count_case_add cases - 1
-  | Texp_try (_, cases) -> count_case_add cases
-  | _ -> 0
+  map0 (texp_ite drop drop drop ||| texp_while ||| texp_for) ~f:1
+  ||| map1 (texp_match drop __) ~f:(fun x -> count_case_add x - 1)
+  ||| map1 (texp_function __) ~f:(fun x -> count_case_add x - 1)
+  ||| map1 (texp_try drop __) ~f:count_case_add
+;;
+
+let count_add expr =
+  Tast_pattern.parse
+    pat
+    expr.Typedtree.exp_loc
+    ~on_error:(fun _desc () -> 0)
+    expr
+    (fun x () -> x)
+    ()
 ;;
 
 let count_rec expr =

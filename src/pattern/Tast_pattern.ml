@@ -635,6 +635,26 @@ let texp_ite (T pred) (T fthen) (T felse) =
       | _ -> fail loc "texp_ite")
 ;;
 
+let texp_while =
+  T
+    (fun ctx loc e k ->
+      match e.exp_desc with
+      | Texp_while _ ->
+        ctx.matched <- ctx.matched + 1;
+        k
+      | _ -> fail loc "texp_while")
+;;
+
+let texp_for =
+  T
+    (fun ctx loc e k ->
+      match e.exp_desc with
+      | Texp_for _ ->
+        ctx.matched <- ctx.matched + 1;
+        k
+      | _ -> fail loc "texp_for")
+;;
+
 let texp_try (T fexpr) (T fcases) =
   T
     (fun ctx loc e k ->

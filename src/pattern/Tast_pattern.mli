@@ -58,7 +58,6 @@ val map_result : ('a, 'b, 'c) t -> f:('c -> 'd) -> ('a, 'b, 'd) t
 
 open Typedtree
 
-val apply : ('a, 'a -> 'b, 'b) t
 val cst : to_string:('a -> string) -> ?equal:('a -> 'a -> bool) -> 'a -> ('a, 'b, 'b) t
 val int : int -> (int, 'a, 'a) t
 val string : string -> (string, 'a, 'a) t
@@ -170,6 +169,9 @@ val texp_ite
   -> (expression, 'b, 'c) t
   -> (expression option, 'c, 'd) t
   -> (expression, 'a, 'd) t
+
+val texp_while : (expression, 'a, 'a) t
+val texp_for : (expression, 'a, 'a) t
 
 val texp_try
   :  (expression, 'a, 'b) t

@@ -110,10 +110,10 @@ let get_function_extra_info () =
 let atom_pat_expr =
   let open Tast_pattern in
   let open Types in
-  texp_ident @@ map1 apply ~f:(fun x -> "id " ^ Path.name x)
-  ||| map1 (econst apply) ~f:(fun x -> "const " ^ const_to_string x)
-  ||| texp_construct_empty (map1 apply ~f:(fun x -> "construct " ^ x.cstr_name))
-  ||| texp_field drop @@ label_desc (map1 apply ~f:(fun x -> "field " ^ x))
+  texp_ident @@ map1 __ ~f:(fun x -> "id " ^ Path.name x)
+  ||| map1 (econst __) ~f:(fun x -> "const " ^ const_to_string x)
+  ||| texp_construct_empty (map1 __ ~f:(fun x -> "construct " ^ x.cstr_name))
+  ||| texp_field drop @@ label_desc (map1 __ ~f:(fun x -> "field " ^ x))
 ;;
 
 let process_not_atom_expr expr =
@@ -169,11 +169,11 @@ let process_expression expr =
 let atom_pat_value =
   let open Tast_pattern in
   let open Types in
-  tpat_var @@ map1 apply ~f:(fun x -> "id " ^ x)
+  tpat_var @@ map1 __ ~f:(fun x -> "id " ^ x)
   ||| map0 tpat_any ~f:"_"
-  ||| tpat_construct_empty (map1 apply ~f:(fun x -> "construct " ^ x.cstr_name))
-  ||| map1 (pconst apply) ~f:(fun x -> "const " ^ const_to_string x)
-  ||| tpat_alias @@ map1 apply ~f:(fun x -> "id " ^ x)
+  ||| tpat_construct_empty (map1 __ ~f:(fun x -> "construct " ^ x.cstr_name))
+  ||| map1 (pconst __) ~f:(fun x -> "const " ^ const_to_string x)
+  ||| tpat_alias @@ map1 __ ~f:(fun x -> "id " ^ x)
 ;;
 
 let process_not_atom_value pat =
