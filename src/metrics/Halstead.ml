@@ -88,11 +88,11 @@ let get_function_metrics_result () =
     else 0.
   in
   let eff = vol *. diff in
-  [ "vocabulary", Int_result (dist_operators + dist_operands)
-  ; "length", Int_result (total_operators + total_operands)
-  ; "volume", Float_result vol
-  ; "difficulty", Float_result diff
-  ; "effort", Float_result eff
+  [ "n", Int_result (dist_operators + dist_operands)
+  ; "N", Int_result (total_operators + total_operands)
+  ; "V", Float_result vol
+  ; "D", Float_result diff
+  ; "E", Float_result eff
   ]
 ;;
 
