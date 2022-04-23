@@ -9,6 +9,7 @@ type context =
   ; metric_extra_info : (string, string list) Hashtbl.t
   ; mutable longest_file_metrics : int
   ; mutable longest_func_metrics : int
+  ; mutable function_metrics_added : bool
   }
 
 let ctx : context =
@@ -18,6 +19,7 @@ let ctx : context =
   ; metric_extra_info = Hashtbl.create (module String)
   ; longest_file_metrics = 0
   ; longest_func_metrics = 0
+  ; function_metrics_added = false
   }
 ;;
 
@@ -39,6 +41,7 @@ let add_file_result filename metric_id res =
 let key_for_func filename func_name = filename ^ ":" ^ func_name
 
 let add_func_result filename func_name metric_id res =
+  ctx.function_metrics_added <- true;
   ctx.longest_func_metrics <- max ctx.longest_func_metrics (String.length metric_id);
   add_value ctx.metric_results (key_for_func filename func_name) (metric_id, res)
 ;;
@@ -101,8 +104,10 @@ let print_file_metrics verbose filename =
   then (
     Format.printf "\nDeclared functions:\n";
     List.iter functions ~f:(fun x -> Format.printf "%s\n" x));
-  Format.printf "\n____Function_metrics____\n\n";
-  List.iter functions ~f:(print_func_metrics verbose filename);
+  if ctx.function_metrics_added
+  then (
+    Format.printf "\n____Function_metrics____\n\n";
+    List.iter functions ~f:(print_func_metrics verbose filename));
   Format.printf "\n"
 ;;
 
