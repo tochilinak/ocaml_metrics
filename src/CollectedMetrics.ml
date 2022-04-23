@@ -47,11 +47,12 @@ let add_func_result filename func_name metric_id res =
 ;;
 
 let add_extra_info where extra_info =
-  if not @@ List.is_empty extra_info then
-  Hashtbl.update ctx.metric_extra_info where ~f:(fun v ->
-      match v with
-      | None -> extra_info
-      | Some list -> list @ ("" :: extra_info))
+  if not @@ List.is_empty extra_info
+  then
+    Hashtbl.update ctx.metric_extra_info where ~f:(fun v ->
+        match v with
+        | None -> extra_info
+        | Some list -> list @ ("" :: extra_info))
 ;;
 
 let add_extra_info_file filename = add_extra_info filename

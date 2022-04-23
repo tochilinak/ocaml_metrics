@@ -40,10 +40,18 @@ let pat =
         | None -> acc + 1
         | Some _ -> acc + 2)
   in
-  map0 (texp_ite drop drop drop ||| texp_while ||| texp_for) ~f:1
-  ||| map1 (texp_match drop __) ~f:(fun x -> count_case_add x - 1)
+  map1 (texp_match drop __) ~f:(fun x -> count_case_add x - 1)
   ||| map1 (texp_function __) ~f:(fun x -> count_case_add x - 1)
   ||| map1 (texp_try drop __) ~f:count_case_add
+  ||| map0
+        (texp_ite drop drop drop
+        ||| texp_while
+        ||| texp_for
+        ||| texp_ident (pident (string "Base.&&"))
+        ||| texp_ident (pident (string "Stdlib.&&"))
+        ||| texp_ident (pident (string "Base.||"))
+        ||| texp_ident (pident (string "Stdlib.||")))
+        ~f:1
 ;;
 
 let count_add expr =
