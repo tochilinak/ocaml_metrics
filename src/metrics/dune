@@ -1,13 +1,7 @@
 (library
  (name Metrics)
  (libraries zanuda_core Tast_pattern ocamlgraph)
- (modules
-  Function_count
-  Halstead
-  LOC
-  CyclomaticComplexity
-  Cohesion
-  test)
+ (modules Function_count Halstead LOC CyclomaticComplexity Cohesion test)
  (preprocess
   (pps ppx_inline_test ppx_assert ppxlib.metaquot))
  (inline_tests))

@@ -98,8 +98,9 @@ let print_file_metrics verbose filename =
   List.iter metrics ~f:(fun (x, y) -> print_metric ctx.longest_file_metrics x y);
   print_extra_info verbose filename;
   if verbose
-  then (Format.printf "\nDeclared functions:\n";
-       List.iter functions ~f:(fun x -> Format.printf "%s\n" x));
+  then (
+    Format.printf "\nDeclared functions:\n";
+    List.iter functions ~f:(fun x -> Format.printf "%s\n" x));
   Format.printf "\n____Function_metrics____\n\n";
   List.iter functions ~f:(print_func_metrics verbose filename);
   Format.printf "\n"
