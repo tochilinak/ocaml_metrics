@@ -47,10 +47,10 @@ let pat =
         (texp_ite drop drop drop
         ||| texp_while
         ||| texp_for
-        ||| texp_ident (pident (string "Base.&&"))
-        ||| texp_ident (pident (string "Stdlib.&&"))
-        ||| texp_ident (pident (string "Base.||"))
-        ||| texp_ident (pident (string "Stdlib.||")))
+        ||| texp_ident (path ["Stdlib"; "&&"])
+        ||| texp_ident (path ["Stdlib"; "||"])
+        ||| texp_ident (path ["Base"; "&&"])
+        ||| texp_ident (path ["Base"; "||"]))
         ~f:1
 ;;
 
