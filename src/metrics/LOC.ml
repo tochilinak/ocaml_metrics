@@ -4,18 +4,26 @@ open Zanuda_core
 open Zanuda_core.Utils
 
 type context =
-  { mutable result : int
+  { mutable code_lines : int
+  ; mutable all_lines : int
   ; mutable last_structure_item : bool
   }
 
-let ctx = { result = 0; last_structure_item = false }
+let ctx = { code_lines = 0; all_lines = 0; last_structure_item = false }
 let metrics_group_id = "LOC-based"
 let get_module_metrics_result () = []
 let get_module_extra_info () = []
 let get_function_extra_info () = []
 let reset () = ctx.last_structure_item <- false
-let before_function _ = ctx.result <- 0
-let get_function_metrics_result () = [ "LOC", Int_result ctx.result ]
+
+let before_function _ =
+  ctx.code_lines <- 0;
+  ctx.all_lines <- 0
+;;
+
+let get_function_metrics_result () =
+  [ "code", Int_result ctx.code_lines; "all", Int_result ctx.all_lines ]
+;;
 
 let get_lines loc =
   let open Location in
@@ -114,8 +122,10 @@ let run _ file_content fallback =
         ctx.last_structure_item <- is_child_of_str_item;
         if is_child_of_str_item
         then (
-          remove_comment_lines processed_file_content @@ get_lines loc;
-          ctx.result <- count_lines processed_file_content loc
+          let s, e = get_lines loc in
+          remove_comment_lines processed_file_content (s, e);
+          ctx.all_lines <- e - s + 1;
+          ctx.code_lines <- count_lines processed_file_content loc
           (*print_endline "";
             Array.iteri processed_file_content ~f:(fun x s ->
                 let from, till = get_lines loc in
