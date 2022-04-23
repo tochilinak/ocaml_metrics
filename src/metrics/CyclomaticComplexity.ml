@@ -6,12 +6,13 @@ open Zanuda_core.Utils
 type context =
   { mutable res_simple : int
   ; mutable res_rec : int
+  ; mutable res_mod : int
   ; mutable cur_value_binding : Ident.t option
   ; mutable is_rec : bool
   }
 
 let ctx : context =
-  { res_simple = 0; res_rec = 0; cur_value_binding = None; is_rec = false }
+  { res_simple = 0; res_rec = 0; res_mod = 0; cur_value_binding = None; is_rec = false }
 ;;
 
 let metrics_group_id = "CC-based"
@@ -23,38 +24,57 @@ let get_module_extra_info () = []
 let before_function (func_info : function_info) =
   ctx.res_simple <- 1;
   ctx.res_rec <- 1;
+  ctx.res_mod <- 1;
   ctx.cur_value_binding <- None;
   ctx.is_rec <- func_info.is_rec
 ;;
 
 let get_function_metrics_result () =
-  [ "CC", Int_result ctx.res_simple; "CC-rec", Int_result ctx.res_rec ]
+  [ "CC-ord", Int_result ctx.res_simple
+  ; "CC-rec", Int_result ctx.res_rec
+  ; "CC-mod", Int_result ctx.res_mod
+  ]
 ;;
 
-let pat =
+let common_pat =
   let open Tast_pattern in
+  map0
+    (texp_ite drop drop drop
+    ||| texp_while
+    ||| texp_for
+    ||| texp_ident (path [ "Stdlib"; "&&" ])
+    ||| texp_ident (path [ "Stdlib"; "||" ])
+    ||| texp_ident (path [ "Base"; "&&" ])
+    ||| texp_ident (path [ "Base"; "||" ]))
+    ~f:1
+;;
+
+let count_case_add case_list =
   let open Typedtree in
-  let count_case_add case_list =
-    List.fold case_list ~init:0 ~f:(fun acc case ->
-        match case.c_guard with
-        | None -> acc + 1
-        | Some _ -> acc + 2)
-  in
+  List.fold case_list ~init:0 ~f:(fun acc case ->
+      match case.c_guard with
+      | None -> acc + 1
+      | Some _ -> acc + 2)
+;;
+
+let pat_ord =
+  let open Tast_pattern in
   map1 (texp_match drop __) ~f:(fun x -> count_case_add x - 1)
   ||| map1 (texp_function __) ~f:(fun x -> count_case_add x - 1)
   ||| map1 (texp_try drop __) ~f:count_case_add
-  ||| map0
-        (texp_ite drop drop drop
-        ||| texp_while
-        ||| texp_for
-        ||| texp_ident (path ["Stdlib"; "&&"])
-        ||| texp_ident (path ["Stdlib"; "||"])
-        ||| texp_ident (path ["Base"; "&&"])
-        ||| texp_ident (path ["Base"; "||"]))
-        ~f:1
+  ||| common_pat
 ;;
 
-let count_add expr =
+let pat_mod =
+  let open Tast_pattern in
+  let count_case_add_mod cases = if List.length cases > 1 then 1 else 0 in
+  map1 (texp_match drop __) ~f:count_case_add_mod
+  ||| map1 (texp_function __) ~f:count_case_add_mod
+  ||| map1 (texp_try drop __) ~f:count_case_add
+  ||| common_pat
+;;
+
+let count_add pat expr =
   Tast_pattern.parse
     pat
     expr.Typedtree.exp_loc
@@ -77,10 +97,11 @@ let run _ _ fallback =
   { fallback with
     expr =
       (fun self expr ->
-        let add = count_add expr in
+        let add_ord = count_add pat_ord expr in
         let rec_add = if ctx.is_rec then count_rec expr else 0 in
-        ctx.res_simple <- ctx.res_simple + add;
-        ctx.res_rec <- ctx.res_rec + add + rec_add;
+        ctx.res_simple <- ctx.res_simple + add_ord;
+        ctx.res_rec <- ctx.res_rec + add_ord + rec_add;
+        ctx.res_mod <- ctx.res_mod + count_add pat_mod expr;
         fallback.expr self expr)
   ; value_binding =
       (fun self vb ->
