@@ -1,4 +1,4 @@
-Metrics names are printed in the following format: `<metrics group id>_<metrics id>`.
+Metrics names are printed in the following format: `[metrics group id]_[metrics id]`.
 
 <table align="center">
     <thead>
@@ -62,6 +62,31 @@ Metrics names are printed in the following format: `<metrics group id>_<metrics 
                  <img src="https://render.githubusercontent.com/render/math?math=l">
                  have the same definitions as above <br />
                 <i>Our interpretation:</i> Similar to LCOM5.
+            </td>
+        </tr>
+        <tr>
+            <td rowspan=3>CC-based</td>
+            <td rowspan=3>
+                <b>McCabe's cyclomatic complexity based</b><br />
+                Read more about CC: https://en.wikipedia.org/wiki/Cyclomatic_complexity
+            </td>
+            <td align="center">CC-ord</td>
+            <td>
+                Traditional cyclomatic complexity
+            </td>
+        </tr>
+        <tr>
+            <td align="center">CC-rec</td>
+            <td>
+                CC-ord + [Number of recursive calls]
+            </td>
+        </tr>
+        <tr>
+            <td align="center">CC-mod</td>
+            <td>
+                Like CC-ord but count <br/>
+                <code> match E0 with | P1 -> E1 ... | PN -> EN </code> <br/>
+                as 1 decision point instead of (N - 1) (but still count guards).
             </td>
         </tr>
     </tbody>
