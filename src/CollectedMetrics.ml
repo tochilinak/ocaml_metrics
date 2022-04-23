@@ -75,19 +75,19 @@ let print_metric width metric_id value =
   | Float_result x -> Format.printf "%.2f\n" x
 ;;
 
-let print_func_metrics verbose filename func =
-  let key = filename ^ ":" ^ func in
-  let metrics = List.rev @@ Hashtbl.find_exn ctx.metric_results key in
-  Format.printf "FUNCTION %s in %s\n" func filename;
-  List.iter metrics ~f:(fun (x, y) -> print_metric ctx.longest_func_metrics x y);
-  print_extra_info verbose key;
-  Format.printf "\n"
-;;
-
 let default_find dict key =
   match Hashtbl.find dict key with
   | None -> []
   | Some list -> list
+;;
+
+let print_func_metrics verbose filename func =
+  let key = filename ^ ":" ^ func in
+  let metrics = List.rev @@ default_find ctx.metric_results key in
+  Format.printf "FUNCTION %s in %s\n" func filename;
+  List.iter metrics ~f:(fun (x, y) -> print_metric ctx.longest_func_metrics x y);
+  print_extra_info verbose key;
+  Format.printf "\n"
 ;;
 
 let print_file_metrics verbose filename =

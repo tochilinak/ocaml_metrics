@@ -78,10 +78,10 @@ let calc_lcom1 () =
           acc
           + int_of_bool
               (MyDigraph.fold_succ
-                 (fun v found -> found || MyDigraph.mem_edge ctx.digraph u2 v)
+                 (fun v found -> found && (not @@ MyDigraph.mem_edge ctx.digraph u2 v))
                  ctx.digraph
                  u1
-                 false)))
+                 true)))
 ;;
 
 module Components = Graph.Components.Undirected (MyGraph)
@@ -100,11 +100,11 @@ let get_module_metrics_result () =
     if down == 0 then 0. else (f @@ (a - e)) /. f down
   in
   let coh = if e == 0 then 1. else f a /. f e in
-  [ "LCOM1", Int_result lcom1
+  [ "COH", Float_result coh
+  ; "LCOM1", Int_result lcom1
   ; "LCOM2", Int_result lcom2
   ; "LCOM34", Int_result (fst @@ Components.components ctx.graph)
   ; "LCOM5", Float_result lcom5
-  ; "COH", Float_result coh
   ]
 ;;
 
