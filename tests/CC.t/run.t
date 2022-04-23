@@ -22,3 +22,7 @@
   CC-based_CC-ord: 2
   CC-based_CC-rec: 3
   CC-based_CC-mod: 2
+  FUNCTION m <17:0-22:12> in Functions.ml
+  CC-based_CC-ord: 5
+  CC-based_CC-rec: 5
+  CC-based_CC-mod: 3

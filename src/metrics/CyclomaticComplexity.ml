@@ -49,28 +49,28 @@ let common_pat =
     ~f:1
 ;;
 
-let count_case_add case_list =
+let count_case_add case_list case_add =
   let open Typedtree in
   List.fold case_list ~init:0 ~f:(fun acc case ->
       match case.c_guard with
-      | None -> acc + 1
-      | Some _ -> acc + 2)
+      | None -> acc + case_add
+      | Some _ -> acc + case_add + 1)
 ;;
 
 let pat_ord =
   let open Tast_pattern in
-  map1 (texp_match drop __) ~f:(fun x -> count_case_add x - 1)
-  ||| map1 (texp_function __) ~f:(fun x -> count_case_add x - 1)
-  ||| map1 (texp_try drop __) ~f:count_case_add
+  map1 (texp_match drop __) ~f:(fun x -> count_case_add x 1 - 1)
+  ||| map1 (texp_function __) ~f:(fun x -> count_case_add x 1 - 1)
+  ||| map1 (texp_try drop __) ~f:(fun x -> count_case_add x 1)
   ||| common_pat
 ;;
 
 let pat_mod =
   let open Tast_pattern in
   let count_case_add_mod cases = if List.length cases > 1 then 1 else 0 in
-  map1 (texp_match drop __) ~f:count_case_add_mod
-  ||| map1 (texp_function __) ~f:count_case_add_mod
-  ||| map1 (texp_try drop __) ~f:count_case_add
+  map1 (texp_match drop __) ~f:(fun x -> count_case_add x 0 + count_case_add_mod x)
+  ||| map1 (texp_function __) ~f:(fun x -> count_case_add x 0 + count_case_add_mod x)
+  ||| map1 (texp_try drop __) ~f:(fun x -> count_case_add x 1)
   ||| common_pat
 ;;
 

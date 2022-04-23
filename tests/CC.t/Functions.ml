@@ -13,3 +13,11 @@ let h str =
 ;;
 
 let rec k x = if x <= 0 then 0 else 1 + k (x - 1)
+
+let m list =
+  match list with
+  | [] -> ""
+  | [_] -> "1"
+  | x::_ when x < 0 -> "-"
+  | _ -> "+"
+;;
