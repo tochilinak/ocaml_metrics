@@ -50,7 +50,7 @@ let count_add expr =
 let count_rec expr =
   let open Typedtree in
   match expr.exp_desc, ctx.cur_value_binding with
-  | Texp_ident (Pident x, _, _), Some y when Ident.equal x y -> 1
+  | Texp_ident (Pident x, _, _), Some y when Ident.T.equal x y -> 1
   | _ -> 0
 ;;
 

@@ -3,8 +3,8 @@ module Format = Caml.Format
 module Hashtbl = Caml.Hashtbl
 open Zanuda_core
 open Zanuda_core.Utils
-module MyGraph = Graph.Imperative.Graph.Concrete (Ident)
-module MyDigraph = Graph.Imperative.Digraph.Concrete (Ident)
+module MyGraph = Graph.Imperative.Graph.Concrete (Ident.T)
+module MyDigraph = Graph.Imperative.Digraph.Concrete (Ident.T)
 
 type context =
   { mutable num_of_methods : int
@@ -119,7 +119,7 @@ let run _ _ fallback =
             let open Tast_pattern in
             let cur_pident =
               let one_pident ident =
-                path_pident @@ cst ~to_string:Ident.name ~equal:Ident.equal ident
+                path_pident @@ cst ~to_string:Ident.name ~equal:Ident.T.equal ident
               in
               MyGraph.fold_vertex
                 (fun func acc -> acc ||| map0 (one_pident func) ~f:func)
