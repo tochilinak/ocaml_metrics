@@ -61,7 +61,7 @@ Metrics names are printed in the following format: `[metrics group id]_[metrics 
                  <img src="https://render.githubusercontent.com/render/math?math=k">, and
                  <img src="https://render.githubusercontent.com/render/math?math=l">
                  have the same definitions as above <br />
-                <i>Our interpretation:</i> Similar to LCOM5.
+                <i>Our interpretation:</i> Like in LCOM5.
             </td>
         </tr>
         <tr>
@@ -88,6 +88,48 @@ Metrics names are printed in the following format: `[metrics group id]_[metrics 
                 Like CC-ord but count <br/>
                 <code> match E0 with | P1 -> E1 ... | PN -> EN </code> <br/>
                 as 1 decision point instead of (N - 1) (but still count guards).
+            </td>
+        </tr>
+        <tr>
+            <td rowspan=5>Halstead</td>
+            <td rowspan=5>
+                n1 = the number of distinct operators <br/>
+                n2 = the number of distinct operands <br/>
+                N1 = the total number of operators <br/>
+                N2 = the total number of operands
+            </td>
+            <td align="center">n</td>
+            <td>
+                Program vocabulary:
+                n1 + n2
+            </td>
+        </tr>
+        <tr>
+            <td align="center">N</td>
+            <td>
+                Program length:
+                N1 + N2
+            </td>
+        </tr>
+        <tr>
+            <td align="center">V</td>
+            <td>
+                Volume:
+                N * log2(n)
+            </td>
+        </tr>
+        <tr>
+            <td align="center">D</td>
+            <td>
+                Difficulty:
+                (n1 / 2) * (N2 / n2)
+            </td>
+        </tr>
+        <tr>
+            <td align="center">E</td>
+            <td>
+                Effort:
+                V * D
             </td>
         </tr>
     </tbody>
