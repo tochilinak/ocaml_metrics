@@ -9,27 +9,27 @@ Metrics names are printed in the following format: `[metrics group id]_[metrics 
             <th>Description</th>
         </tr>
     </thead>
-    <tbody align="center">
+    <tbody>
         <tr>
-            <td rowspan=5>cohesion</td>
-            <td rowspan=5>
-                <b>Class cohesion metrics</b><br />
+            <td rowspan=5 align="center" >cohesion</td>
+            <td rowspan=5 align="left">
+                <b align="center">Class cohesion metrics</b><br />
                 Alternative to class is a module.<br />
                 Alternative to both attributes and methods are functions.<br />
                 "Methods share attributes" -> "Functions call the same function or one of them calls the other"
             </td>
             <td align="center">LCOM1</td>
-            <td><i>Original definition:</i> Number of pairs of methods that do not share attributes</td>
+            <td  align="left" ><i>Original definition:</i> Number of pairs of methods that do not share attributes</td>
         </tr>
         <tr>
-            <td>LCOM2</td>
+            <td  align="center">LCOM2</td>
             <td><i>Original definition:</i><br />
                 P = Number of pairs of methods that do not share attributes<br />
                 Q = Number of pairs of methods that share attributes<br />
                 LCOM2 = max(P - Q, 0)</td>
         </tr>
         <tr>
-            <td>LCOM34</td>
+            <td  align="center">LCOM34</td>
             <td>LCOM3 = Number of disjoint components in the graph that represents each method as a
                 node and the sharing of at least one attribute as an edge <br />
                 LCOM4 = Similar to LCOM3 and additional edges are used to represent method invocations <br />
@@ -37,7 +37,7 @@ Metrics names are printed in the following format: `[metrics group id]_[metrics 
             </td>
         </tr>
         <tr>
-            <td>LCOM5</td>
+            <td  align="center">LCOM5</td>
             <td>
                 <i>Original definition:</i>
                 <img src="https://render.githubusercontent.com/render/math?math=\frac{a-kl}{l-kl}">, where
@@ -54,7 +54,7 @@ Metrics names are printed in the following format: `[metrics group id]_[metrics 
             </td>
         </tr>
         <tr>
-            <td>COH</td>
+            <td  align="center">COH</td>
             <td> <i>Original definition:</i>
                  <img src="https://render.githubusercontent.com/render/math?math=\frac{a}{kl}">, where 
                  <img src="https://render.githubusercontent.com/render/math?math=a">,
@@ -65,7 +65,7 @@ Metrics names are printed in the following format: `[metrics group id]_[metrics 
             </td>
         </tr>
         <tr>
-            <td rowspan=3>CC-based</td>
+            <td rowspan=3  align="center">CC-based</td>
             <td rowspan=3>
                 <b>McCabe's cyclomatic complexity based</b><br />
                 Read more about CC: https://en.wikipedia.org/wiki/Cyclomatic_complexity
@@ -91,7 +91,7 @@ Metrics names are printed in the following format: `[metrics group id]_[metrics 
             </td>
         </tr>
         <tr>
-            <td rowspan=5>Halstead</td>
+            <td rowspan=5 align="center" >Halstead</td>
             <td rowspan=5>
                 <b> Halstead complexity measures </b> <br/>
                 n1 = the number of distinct operators <br/>
@@ -134,13 +134,13 @@ Metrics names are printed in the following format: `[metrics group id]_[metrics 
             </td>
         </tr>
         <tr>
-            <td rowspan=2>LOC-based</td>
+            <td rowspan=2  align="center">LOC-based</td>
             <td rowspan=2>
                 <b> Lines of code </b> <br/>
             </td>
             <td align="center">all</td>
             <td>
-                Number of lines in function definition
+                Number of lines in function
             </td>
         </tr>
         <tr>
