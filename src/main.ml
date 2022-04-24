@@ -15,6 +15,7 @@ let groups_of_metrics =
 
 let metrics_group_id_list =
   List.map groups_of_metrics ~f:(fun (module L : METRIC.GROUP) -> L.metrics_group_id)
+  |> List.filter ~f:(fun x -> not @@ String.equal x "(test)")
 ;;
 
 let verbose_metrics = ref metrics_group_id_list
