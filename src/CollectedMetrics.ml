@@ -4,14 +4,15 @@ open Utils
 
 module Item = struct
   type t =
-      | File of string (* filename *)
-      | Module of string * string (* filename, modname *)
-      | Function of string * string * string (* filename, modname, func_name *)
+    | File of string (* filename *)
+    | Module of string * string (* filename, modname *)
+    | Function of string * string * string (* filename, modname, func_name *)
 
   let to_string = function
-      | File x -> x
-      | Module (x, y) -> x ^ ":" ^ y
-      | Function (x, y, z) -> x ^ ":" ^ y ^ ":" ^ z
+    | File x -> x
+    | Module (x, y) -> x ^ ":" ^ y
+    | Function (x, y, z) -> x ^ ":" ^ y ^ ":" ^ z
+  ;;
 
   let hash x = String.hash (to_string x)
   let compare x y = String.compare (to_string x) (to_string y)
@@ -43,18 +44,26 @@ let add_value ~table ~key ~value =
 let add_file = Queue.enqueue ctx.file_list
 let add_declaration = add_value ~table:ctx.declarations
 
-let add_module filename modname = add_declaration
-                                    ~key:(File filename)
-                                    ~value:(Module (filename, modname))
+let add_module filename modname =
+  add_declaration ~key:(File filename) ~value:(Module (filename, modname))
+;;
 
-let add_function filename modname func = add_declaration
-                                     ~key:(Module (filename, modname))
-                                     ~value:(Function (filename, modname, func))
+let add_function filename modname func =
+  add_declaration
+    ~key:(Module (filename, modname))
+    ~value:(Function (filename, modname, func))
+;;
 
-let add_result where metric_id res = add_value ~table:ctx.metric_results ~key:where ~value:(metric_id, res)
+let add_result where metric_id res =
+  add_value ~table:ctx.metric_results ~key:where ~value:(metric_id, res)
+;;
 
 let f_on_module f filename modname = f @@ Item.Module (filename, modname)
-let f_on_func f filename modname func_name = f @@ Item.Function (filename, modname, func_name)
+
+let f_on_func f filename modname func_name =
+  f @@ Item.Function (filename, modname, func_name)
+;;
+
 let add_module_result = f_on_module add_result
 let add_func_result = f_on_func add_result
 
@@ -100,21 +109,22 @@ let get_metrics key = List.rev @@ default_find ctx.metric_results key
 let fold_on_results ~init ~f =
   Hashtbl.fold ctx.metric_results ~init ~f:(fun ~key ~data acc ->
       List.fold data ~init:acc ~f:(fun x y -> f x key y))
+;;
 
 let longest_func_metrics () =
   fold_on_results ~init:0 ~f:(fun acc key (x, _) ->
-    match key with
-    | Function _ -> max acc (String.length x)
-    | _ -> acc)
+      match key with
+      | Function _ -> max acc (String.length x)
+      | _ -> acc)
 ;;
 
-let function_metrics_added () = (longest_func_metrics ()) > 0
+let function_metrics_added () = longest_func_metrics () > 0
 
 let longest_module_metrics () =
   fold_on_results ~init:0 ~f:(fun acc key (x, _) ->
-    match key with
-    | Module _ -> max acc (String.length x)
-    | _ -> acc)
+      match key with
+      | Module _ -> max acc (String.length x)
+      | _ -> acc)
 ;;
 
 let print_func_metrics verbose filename modname func =
@@ -127,8 +137,9 @@ let print_func_metrics verbose filename modname func =
   Format.printf "\n"
 ;;
 
-let item_names items = List.map items ~f:(function
-    | Item.File x | Item.Module (_, x) | Item.Function (_, _, x) -> x)
+let item_names items =
+  List.map items ~f:(function
+      | Item.File x | Item.Module (_, x) | Item.Function (_, _, x) -> x)
 ;;
 
 let get_subitems key = item_names @@ List.rev (default_find ctx.declarations key)

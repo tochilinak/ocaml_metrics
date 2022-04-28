@@ -41,7 +41,8 @@ let collect_function_results info func_name (module L : METRIC.GROUP) =
     ~get_result:L.get_function_metrics_result
     ~get_extra_info:L.get_function_extra_info
     ~add_result:(CollectedMetrics.add_func_result info.filename info.filename func_name)
-    ~add_extra_info:(CollectedMetrics.add_extra_info_func info.filename info.filename func_name)
+    ~add_extra_info:
+      (CollectedMetrics.add_extra_info_func info.filename info.filename func_name)
 ;;
 
 let collect_module_results info (module L : METRIC.GROUP) =
