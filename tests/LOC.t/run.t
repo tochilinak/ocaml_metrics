@@ -1,6 +1,7 @@
   $ dune build
   $ mylinter . -met-list LOC | sed -re "/^$/d"
   FILE Functions.ml
+  MODULE Functions.ml in Functions.ml
   ____Function_metrics____
   FUNCTION f <1:0-6:21> in Functions.ml
   LOC-based_code: 4

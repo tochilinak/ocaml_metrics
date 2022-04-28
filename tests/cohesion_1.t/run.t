@@ -1,7 +1,8 @@
   $ dune build
   $ mylinter . -met-list cohesion | sed -re "/^$/d"
   FILE Cohesion_1.ml
-  ______File_metrics______
+  MODULE Cohesion_1.ml in Cohesion_1.ml
+  _____Module_metrics_____
      cohesion_COH: 0.30
    cohesion_LCOM1: 6
    cohesion_LCOM2: 2

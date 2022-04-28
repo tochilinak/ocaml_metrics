@@ -2,28 +2,38 @@ open Base
 open Caml.Format
 open Utils
 
+module Item = struct
+  type t =
+      | File of string (* filename *)
+      | Module of string * string (* filename, modname *)
+      | Function of string * string * string (* filename, modname, func_name *)
+
+  let to_string = function
+      | File x -> x
+      | Module (x, y) -> x ^ ":" ^ y
+      | Function (x, y, z) -> x ^ ":" ^ y ^ ":" ^ z
+
+  let hash x = String.hash (to_string x)
+  let compare x y = String.compare (to_string x) (to_string y)
+  let sexp_of_t x = String.sexp_of_t (to_string x)
+end
+
 type context =
   { file_list : string Queue.t
-  ; functions_in_file : (string, string list) Hashtbl.t
-  ; metric_results : (string, (string * metric_result) list) Hashtbl.t
-  ; metric_extra_info : (string, string list) Hashtbl.t
-  ; mutable longest_file_metrics : int
-  ; mutable longest_func_metrics : int
-  ; mutable function_metrics_added : bool
+  ; declarations : (Item.t, Item.t list) Hashtbl.t
+  ; metric_results : (Item.t, (string * metric_result) list) Hashtbl.t
+  ; metric_extra_info : (Item.t, string list) Hashtbl.t
   }
 
 let ctx : context =
   { file_list = Queue.create ()
-  ; functions_in_file = Hashtbl.create (module String)
-  ; metric_results = Hashtbl.create (module String)
-  ; metric_extra_info = Hashtbl.create (module String)
-  ; longest_file_metrics = 0
-  ; longest_func_metrics = 0
-  ; function_metrics_added = false
+  ; declarations = Hashtbl.create (module Item)
+  ; metric_results = Hashtbl.create (module Item)
+  ; metric_extra_info = Hashtbl.create (module Item)
   }
 ;;
 
-let add_value table key value =
+let add_value ~table ~key ~value =
   Hashtbl.update table key ~f:(fun v ->
       match v with
       | None -> [ value ]
@@ -31,20 +41,22 @@ let add_value table key value =
 ;;
 
 let add_file = Queue.enqueue ctx.file_list
-let add_function filename func = add_value ctx.functions_in_file filename func
+let add_declaration = add_value ~table:ctx.declarations
 
-let add_file_result filename metric_id res =
-  ctx.longest_file_metrics <- max ctx.longest_file_metrics (String.length metric_id);
-  add_value ctx.metric_results filename (metric_id, res)
-;;
+let add_module filename modname = add_declaration
+                                    ~key:(File filename)
+                                    ~value:(Module (filename, modname))
 
-let key_for_func filename func_name = filename ^ ":" ^ func_name
+let add_function filename modname func = add_declaration
+                                     ~key:(Module (filename, modname))
+                                     ~value:(Function (filename, modname, func))
 
-let add_func_result filename func_name metric_id res =
-  ctx.function_metrics_added <- true;
-  ctx.longest_func_metrics <- max ctx.longest_func_metrics (String.length metric_id);
-  add_value ctx.metric_results (key_for_func filename func_name) (metric_id, res)
-;;
+let add_result where metric_id res = add_value ~table:ctx.metric_results ~key:where ~value:(metric_id, res)
+
+let f_on_module f filename modname = f @@ Item.Module (filename, modname)
+let f_on_func f filename modname func_name = f @@ Item.Function (filename, modname, func_name)
+let add_module_result = f_on_module add_result
+let add_func_result = f_on_func add_result
 
 let add_extra_info where extra_info =
   if not @@ List.is_empty extra_info
@@ -55,11 +67,8 @@ let add_extra_info where extra_info =
         | Some list -> list @ ("" :: extra_info))
 ;;
 
-let add_extra_info_file filename = add_extra_info filename
-
-let add_extra_info_func filename func_name =
-  add_extra_info (key_for_func filename func_name)
-;;
+let add_extra_info_module = f_on_module add_extra_info
+let add_extra_info_func = f_on_func add_extra_info
 
 let print_extra_info verbose where =
   if verbose
@@ -86,31 +95,69 @@ let default_find dict key =
   | Some list -> list
 ;;
 
-let print_func_metrics verbose filename func =
-  let key = filename ^ ":" ^ func in
-  let metrics = List.rev @@ default_find ctx.metric_results key in
+let get_metrics key = List.rev @@ default_find ctx.metric_results key
+
+let fold_on_results ~init ~f =
+  Hashtbl.fold ctx.metric_results ~init ~f:(fun ~key ~data acc ->
+      List.fold data ~init:acc ~f:(fun x y -> f x key y))
+
+let longest_func_metrics () =
+  fold_on_results ~init:0 ~f:(fun acc key (x, _) ->
+    match key with
+    | Function _ -> max acc (String.length x)
+    | _ -> acc)
+;;
+
+let function_metrics_added () = (longest_func_metrics ()) > 0
+
+let longest_module_metrics () =
+  fold_on_results ~init:0 ~f:(fun acc key (x, _) ->
+    match key with
+    | Module _ -> max acc (String.length x)
+    | _ -> acc)
+;;
+
+let print_func_metrics verbose filename modname func =
+  let key = Item.Function (filename, modname, func) in
+  let width = longest_func_metrics () in
+  let metrics = get_metrics key in
   Format.printf "FUNCTION %s in %s\n" func filename;
-  List.iter metrics ~f:(fun (x, y) -> print_metric ctx.longest_func_metrics x y);
+  List.iter metrics ~f:(fun (x, y) -> print_metric width x y);
   print_extra_info verbose key;
   Format.printf "\n"
 ;;
 
-let print_file_metrics verbose filename =
-  let metrics = List.rev @@ default_find ctx.metric_results filename in
-  let functions = List.rev @@ default_find ctx.functions_in_file filename in
-  Format.printf "FILE %s\n" filename;
-  if not (List.is_empty metrics) then Format.printf "\n______File_metrics______\n\n";
-  List.iter metrics ~f:(fun (x, y) -> print_metric ctx.longest_file_metrics x y);
-  print_extra_info verbose filename;
+let item_names items = List.map items ~f:(function
+    | Item.File x | Item.Module (_, x) | Item.Function (_, _, x) -> x)
+;;
+
+let get_subitems key = item_names @@ List.rev (default_find ctx.declarations key)
+
+let print_module_metrics verbose filename modname =
+  let key = Item.Module (filename, modname) in
+  let metrics = get_metrics key in
+  let width = longest_module_metrics () in
+  let functions = get_subitems key in
+  Format.printf "MODULE %s in %s\n" modname filename;
+  if not (List.is_empty metrics) then Format.printf "\n_____Module_metrics_____\n\n";
+  List.iter metrics ~f:(fun (x, y) -> print_metric width x y);
   if verbose
   then (
     Format.printf "\nDeclared functions:\n";
-    List.iter functions ~f:(fun x -> Format.printf "%s\n" x));
-  if ctx.function_metrics_added
+    List.iter functions ~f:(Format.printf "%s\n"));
+  if function_metrics_added ()
   then (
     Format.printf "\n____Function_metrics____\n\n";
-    List.iter functions ~f:(print_func_metrics verbose filename));
+    List.iter functions ~f:(print_func_metrics verbose filename modname));
+  print_extra_info verbose key;
   Format.printf "\n"
 ;;
 
-let report verbose () = Queue.iter ctx.file_list ~f:(print_file_metrics verbose)
+let print_file_info verbose filename =
+  let key = Item.File filename in
+  let modules = get_subitems key in
+  Format.printf "FILE %s\n" filename;
+  List.iter modules ~f:(fun x -> print_module_metrics verbose filename x)
+;;
+
+let report verbose () = Queue.iter ctx.file_list ~f:(print_file_info verbose)

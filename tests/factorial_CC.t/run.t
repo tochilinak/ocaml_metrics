@@ -1,6 +1,7 @@
   $ dune build
   $ mylinter . -met-list CC | sed -re "/^$/d"
   FILE Factorial.ml
+  MODULE Factorial.ml in Factorial.ml
   ____Function_metrics____
   FUNCTION fac1 <1:0-1:55> in Factorial.ml
   CC-based_CC-ord: 2
