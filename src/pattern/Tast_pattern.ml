@@ -317,7 +317,21 @@ end
 
 open Typedtree
 
-let apply = T (fun _ _ x k -> k x)
+[%%if ocaml_version < (4, 11, 0)]
+
+let const_to_string =
+  let open Asttypes in
+  function
+  | Const_int v -> Int.to_string v
+  | Const_char v -> Printf.sprintf "%C" v
+  | Const_string (v, _) -> "\"" ^ v ^ "\""
+  | Const_float v -> v
+  | Const_int32 v -> Int32.to_string v
+  | Const_int64 v -> Int64.to_string v
+  | Const_nativeint v -> Nativeint.to_string v
+;;
+
+[%%else]
 
 let const_to_string =
   let open Asttypes in
@@ -330,6 +344,8 @@ let const_to_string =
   | Const_int64 v -> Int64.to_string v
   | Const_nativeint v -> Nativeint.to_string v
 ;;
+
+[%%endif]
 
 let econst (T f0) =
   T
@@ -362,28 +378,6 @@ let eint (T f0) =
         (* log "eint succeeded %a\n%!" MyPrinttyped.expr x; *)
         ans
       | _ -> fail loc "eint")
-;;
-
-let estr (T f0) =
-  T
-    (fun ctx loc x k ->
-      match x.exp_desc with
-      | Texp_constant (Asttypes.Const_string (s, _, _)) ->
-        ctx.matched <- ctx.matched + 1;
-        let ans = f0 ctx loc s k in
-        ans
-      | _ -> fail loc "estr")
-;;
-
-let pstr (T f0) =
-  T
-    (fun ctx loc x k ->
-      match x.pat_desc with
-      | Tpat_constant (Asttypes.Const_string (s, _, _)) ->
-        ctx.matched <- ctx.matched + 1;
-        let ans = f0 ctx loc s k in
-        ans
-      | _ -> fail loc "pstr")
 ;;
 
 let ebool =
@@ -559,6 +553,27 @@ type my_general_pattern =
   | Computation of comp_pat
   | Or_pattern
 
+[%%if ocaml_version < (4, 11, 2)]
+
+let convert_gen_pat : type k. k gen_pat -> my_general_pattern =
+ fun x ->
+  match x.pat_desc with
+  | Tpat_any -> Value x
+  | Tpat_var _ -> Value x
+  | Tpat_constant _ -> Value x
+  | Tpat_tuple _ -> Value x
+  | Tpat_construct _ -> Value x
+  | Tpat_variant _ -> Value x
+  | Tpat_record _ -> Value x
+  | Tpat_array _ -> Value x
+  | Tpat_alias _ -> Value x
+  | Tpat_lazy _ -> Value x
+  | Tpat_exception _ -> Computation x
+  | Tpat_or _ -> Or_pattern
+;;
+
+[%%else]
+
 let convert_gen_pat : type k. k gen_pat -> my_general_pattern =
  fun x ->
   match x.pat_desc with
@@ -576,6 +591,8 @@ let convert_gen_pat : type k. k gen_pat -> my_general_pattern =
   | Tpat_exception _ -> Computation x
   | Tpat_or _ -> Or_pattern
 ;;
+
+[%%endif]
 
 let texp_function (T fcases) =
   T

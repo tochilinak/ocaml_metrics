@@ -79,12 +79,12 @@ let remove_const file_content loc =
 
 let expr_pat =
   let open Tast_pattern in
-  estr drop
+  econst drop
 ;;
 
 let pat_pat =
   let open Tast_pattern in
-  pstr drop
+  pconst drop
 ;;
 
 let parse processed_file_content value loc pat =
