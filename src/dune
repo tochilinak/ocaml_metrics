@@ -21,7 +21,7 @@
 (executable
  (name main)
  (public_name mylinter)
- (modules main)
+ (modules main My_Tast_iterator)
  (libraries
   base
   stdio
