@@ -9,10 +9,10 @@ module type GROUP = sig
     -> Tast_iterator.iterator
     -> Tast_iterator.iterator
 
-  val reset : unit -> unit
   val get_module_metrics_result : unit -> (string * metric_result) list
   val get_function_metrics_result : unit -> (string * metric_result) list
   val get_module_extra_info : unit -> string list
   val get_function_extra_info : unit -> string list
+  val before_module : unit -> unit
   val before_function : Utils.function_info -> unit
 end

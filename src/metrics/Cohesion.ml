@@ -29,7 +29,7 @@ let metrics_group_id = "cohesion"
 let get_function_metrics_result () = []
 let get_function_extra_info () = []
 
-let reset () =
+let before_module () =
   ctx.num_of_methods <- 0;
   ctx.possible_arcs <- 0;
   ctx.cur_function <- None;

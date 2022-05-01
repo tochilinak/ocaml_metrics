@@ -16,7 +16,7 @@ let ctx : context =
 ;;
 
 let metrics_group_id = "CC-based"
-let reset () = ()
+let before_module () = ()
 let get_function_extra_info () = []
 let get_module_metrics_result () = []
 let get_module_extra_info () = []

@@ -50,22 +50,15 @@ let typed_on_structure info modname file_content typedtree =
     ; verbose_metrics = !verbose_metrics
     ; cur_module = modname
     ; inside_module_binding = false
+    ; in_root_structure = true
     }
   in
   build_iterator
     ~f:(fun o -> o.Tast_iterator.structure o)
-    ~compose:(fun (module L : METRIC.GROUP) ->
-      L.reset ();
-      L.run info file_content)
+    ~compose:(fun (module L : METRIC.GROUP) -> L.run info file_content)
     ~init:(my_iterator iter_info)
     groups_of_metrics
-    typedtree;
-  build_iterator
-    ~f:(fun () -> CollectedMetrics.add_file filename)
-    ~compose:(fun (module L : METRIC.GROUP) () ->
-      My_Tast_iterator.collect_module_results iter_info (module L))
-    ~init:()
-    groups_of_metrics
+    typedtree
 ;;
 
 let with_info filename f =

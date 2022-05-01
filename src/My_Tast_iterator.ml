@@ -12,11 +12,17 @@ type iterator_params =
   ; verbose_metrics : string list
   ; mutable cur_module : string
   ; mutable inside_module_binding : bool (* default: false *)
+  ; mutable in_root_structure : bool (* default: true *)
   }
 
 let before_function info func_info =
   List.iter info.groups_of_metrics ~f:(fun (module L : METRIC.GROUP) ->
       L.before_function func_info)
+;;
+
+let before_module info =
+  List.iter info.groups_of_metrics ~f:(fun (module L : METRIC.GROUP) ->
+      L.before_module ())
 ;;
 
 let collect_results
@@ -61,6 +67,10 @@ let collect_function_metrics info func_name =
   List.iter info.groups_of_metrics ~f:(collect_function_results info func_name)
 ;;
 
+let collect_module_metrics info =
+  List.iter info.groups_of_metrics ~f:(collect_module_results info)
+;;
+
 let get_value_name vb =
   let loc = short_location_str vb.vb_loc in
   match get_vb_name vb with
@@ -92,31 +102,50 @@ let my_structure_item info self str_item =
 ;;
 
 let my_module_expr info self mod_expr =
-  (match mod_expr.mod_desc with
-  | Tmod_structure _ ->
-      if info.inside_module_binding
-      then CollectedMetrics.add_module info.filename info.cur_module
-  | _ -> ());
-  default_iterator.module_expr self mod_expr
+  let is_named_module_ mod_desc =
+    match mod_desc with
+    | Tmod_structure _ -> info.inside_module_binding
+    | _ -> false
+  in
+  let is_named_module = is_named_module_ mod_expr.mod_desc in
+  if is_named_module
+  then (
+    CollectedMetrics.add_module info.filename info.cur_module;
+    before_module info);
+  default_iterator.module_expr self mod_expr;
+  if is_named_module then collect_module_metrics info
 ;;
 
-let my_module_binding info self { mb_expr; mb_id; _ } =
-  match mb_id with
-  | None -> self.module_expr self mb_expr
+let my_module_binding info self mb =
+  match mb.mb_id with
+  | None -> default_iterator.module_binding self mb
   | Some x ->
     let old_cur_module = info.cur_module in
     info.cur_module <- info.cur_module ^ "." ^ Ident.name x;
     info.inside_module_binding <- true;
-    self.module_expr self mb_expr;
+    default_iterator.module_binding self mb;
     info.inside_module_binding <- false;
     info.cur_module <- old_cur_module
 ;;
 
+let my_structure info self str =
+  let is_root = info.in_root_structure in
+  info.in_root_structure <- false;
+  if is_root
+  then (
+    CollectedMetrics.add_module info.filename info.cur_module;
+    before_module info);
+  default_iterator.structure self str;
+  if is_root then collect_module_metrics info
+;;
+
 let my_iterator info =
-  CollectedMetrics.add_module info.filename info.cur_module;
+  CollectedMetrics.add_file info.filename;
   let open Typedtree in
   { default_iterator with
-    structure_item = my_structure_item info;
-    module_binding = my_module_binding info;
-    module_expr = my_module_expr info }
+    structure = my_structure info
+  ; structure_item = my_structure_item info
+  ; module_binding = my_module_binding info
+  ; module_expr = my_module_expr info
+  }
 ;;
