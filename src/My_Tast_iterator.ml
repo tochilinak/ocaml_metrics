@@ -11,6 +11,7 @@ type iterator_params =
   ; metrics_to_show : string list
   ; verbose_metrics : string list
   ; mutable cur_module : string
+  ; mutable inside_module_binding : bool (* default: false *)
   }
 
 let before_function info func_info =
@@ -84,11 +85,19 @@ let my_value_bindings info rec_flag self list =
         function_value_binding info func_info self x))
 ;;
 
+let my_structure_item info self str_item =
+  match str_item.str_desc with
+  | Tstr_value (rec_flag, list) -> my_value_bindings info rec_flag self list
+  | _ -> default_iterator.structure_item self str_item
+;;
+
 let my_module_expr info self mod_expr =
   (match mod_expr.mod_desc with
-  | Tmod_structure _ -> CollectedMetrics.add_module info.filename info.cur_module
+  | Tmod_structure _ ->
+      if info.inside_module_binding
+      then CollectedMetrics.add_module info.filename info.cur_module
   | _ -> ());
-  self.module_expr self mod_expr
+  default_iterator.module_expr self mod_expr
 ;;
 
 let my_module_binding info self { mb_expr; mb_id; _ } =
@@ -97,19 +106,17 @@ let my_module_binding info self { mb_expr; mb_id; _ } =
   | Some x ->
     let old_cur_module = info.cur_module in
     info.cur_module <- info.cur_module ^ "." ^ Ident.name x;
-    my_module_expr info self mb_expr;
+    info.inside_module_binding <- true;
+    self.module_expr self mb_expr;
+    info.inside_module_binding <- false;
     info.cur_module <- old_cur_module
-;;
-
-let my_structure_item info self str_item =
-  match str_item.str_desc with
-  | Tstr_value (rec_flag, list) -> my_value_bindings info rec_flag self list
-  | Tstr_module mb -> my_module_binding info self mb
-  | _ -> default_iterator.structure_item self str_item
 ;;
 
 let my_iterator info =
   CollectedMetrics.add_module info.filename info.cur_module;
   let open Typedtree in
-  { default_iterator with structure_item = my_structure_item info }
+  { default_iterator with
+    structure_item = my_structure_item info;
+    module_binding = my_module_binding info;
+    module_expr = my_module_expr info }
 ;;

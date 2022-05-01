@@ -49,6 +49,7 @@ let typed_on_structure info modname file_content typedtree =
     ; metrics_to_show = !metrics_to_show
     ; verbose_metrics = !verbose_metrics
     ; cur_module = modname
+    ; inside_module_binding = false
     }
   in
   build_iterator
