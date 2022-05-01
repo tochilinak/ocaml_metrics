@@ -1,6 +1,5 @@
 open Base
 module Format = Caml.Format
-module Hashtbl = Caml.Hashtbl
 open Zanuda_core
 open Zanuda_core.Utils
 module MyGraph = Graph.Imperative.Graph.Concrete (Ident.T)
@@ -15,30 +14,27 @@ type context =
   ; graph : MyGraph.t
   }
 
-let ctx : context =
-  { num_of_methods = 0
-  ; possible_arcs = 0
-  ; cur_function = None
-  ; functions = []
-  ; digraph = MyDigraph.create ()
-  ; graph = MyGraph.create ()
-  }
+let contexts = Stack.create ()
+
+let before_module () =
+  Stack.push
+    contexts
+    { num_of_methods = 0
+    ; possible_arcs = 0
+    ; cur_function = None
+    ; functions = []
+    ; digraph = MyDigraph.create ()
+    ; graph = MyGraph.create ()
+    }
 ;;
 
+let get_ctx () = Stack.top_exn contexts
 let metrics_group_id = "cohesion"
 let get_function_metrics_result () = []
 let get_function_extra_info () = []
 
-let before_module () =
-  ctx.num_of_methods <- 0;
-  ctx.possible_arcs <- 0;
-  ctx.cur_function <- None;
-  ctx.functions <- [];
-  MyDigraph.clear ctx.digraph;
-  MyGraph.clear ctx.graph
-;;
-
 let before_function func_info =
+  let ctx = get_ctx () in
   ctx.cur_function <- func_info.name;
   match func_info.name with
   | None -> ()
@@ -52,6 +48,7 @@ let before_function func_info =
 ;;
 
 let get_module_extra_info () =
+  let ctx = get_ctx () in
   "COHESION GRAPH:"
   :: MyGraph.fold_edges
        (fun u v acc -> Format.sprintf "%s -> %s" (Ident.name u) (Ident.name v) :: acc)
@@ -60,6 +57,7 @@ let get_module_extra_info () =
 ;;
 
 let calc_lcom1 () =
+  let ctx = get_ctx () in
   let int_of_bool b = if b then 1 else 0 in
   let ind_func_list =
     List.zip_exn (List.mapi ctx.functions ~f:(fun i _ -> i)) ctx.functions
@@ -86,7 +84,8 @@ let calc_lcom1 () =
 
 module Components = Graph.Components.Undirected (MyGraph)
 
-let get_module_metrics_result () =
+let calc_result () =
+  let ctx = get_ctx () in
   let lcom1 = calc_lcom1 () in
   let lcom2 =
     max 0 @@ ((2 * lcom1) - (ctx.num_of_methods * (ctx.num_of_methods - 1) / 2))
@@ -108,12 +107,19 @@ let get_module_metrics_result () =
   ]
 ;;
 
+let get_module_metrics_result () =
+  let result = calc_result () in
+  let _ = Stack.pop_exn contexts in
+  result
+;;
+
 let run _ _ fallback =
   let open Tast_iterator in
   let open Typedtree in
   { fallback with
     expr =
       (fun self expr ->
+        let ctx = get_ctx () in
         let look_for_edge cur_func =
           let pat =
             let open Tast_pattern in

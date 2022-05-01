@@ -166,7 +166,11 @@ let print_module_metrics verbose filename modname =
 
 let print_file_info verbose filename =
   let key = Item.File filename in
-  let modules = get_subitems key in
+  let modules =
+    item_names
+    @@ List.rev
+    @@ List.filter (default_find ctx.declarations key) ~f:(Hashtbl.mem ctx.declarations)
+  in
   Format.printf "FILE %s\n" filename;
   if verbose
   then (

@@ -1,4 +1,0 @@
-(library
- (name test_cohesion_1)
- (wrapped false)
- (modules cohesion_1))

@@ -33,13 +33,13 @@ let collect_results
     ~add_result
     ~add_extra_info
   =
+  if List.mem info.verbose_metrics metrics_group_id ~equal:String.equal
+  then add_extra_info (get_extra_info ());
   List.iter (get_result ()) ~f:(fun (str, value) ->
       let cur_metrics = metrics_group_id ^ "_" ^ str in
       if List.exists info.metrics_to_show ~f:(fun x ->
              String.is_substring cur_metrics ~substring:x)
-      then add_result cur_metrics value);
-  if List.mem info.verbose_metrics metrics_group_id ~equal:String.equal
-  then add_extra_info (get_extra_info ())
+      then add_result cur_metrics value)
 ;;
 
 let collect_function_results info func_name (module L : METRIC.GROUP) =
