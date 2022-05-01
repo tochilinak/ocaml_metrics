@@ -61,9 +61,10 @@ let analyze_dir ~cmt:analyze_cmt ~cmti:analyze_cmti path =
   let on_module _ m =
     let on_cmti source_file (_cmi_info, cmt_info) =
       Option.iter cmt_info ~f:(fun cmt ->
+          let modname = cmt.Cmt_format.cmt_modname in
           match cmt.Cmt_format.cmt_annots with
-          | Cmt_format.Implementation stru -> analyze_cmt source_file stru
-          | Cmt_format.Interface sign -> analyze_cmti source_file sign
+          | Cmt_format.Implementation stru -> analyze_cmt source_file modname stru
+          | Cmt_format.Interface sign -> analyze_cmti source_file modname sign
           | Cmt_format.Packed _
           | Cmt_format.Partial_implementation _
           | Cmt_format.Partial_interface _ ->

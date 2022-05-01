@@ -39,7 +39,7 @@ let build_iterator ~init ~compose ~f xs =
   f o
 ;;
 
-let typed_on_structure info file_content typedtree =
+let typed_on_structure info modname file_content typedtree =
   let open Compile_common in
   let open My_Tast_iterator in
   let filename = cut_build_dir info.source_file in
@@ -48,6 +48,7 @@ let typed_on_structure info file_content typedtree =
     ; groups_of_metrics
     ; metrics_to_show = !metrics_to_show
     ; verbose_metrics = !verbose_metrics
+    ; file_module = modname
     }
   in
   build_iterator
@@ -76,13 +77,19 @@ let with_info filename f =
     f
 ;;
 
-let process_cmt_typedtree filename typedtree =
+let process_cmt_typedtree filename dune_modname typedtree =
   if Config.verbose () then printfn "Analyzing file: %s" filename;
   (*Format.printf "Typedtree ML:\n%a\n%!" Printtyped.implementation typedtree;*)
+  let modname =
+    let str = String.substr_replace_all dune_modname ~pattern:"__" ~with_:"." in
+    if String.is_prefix str ~prefix:"Dune.exe"
+    then String.substr_replace_first str ~pattern:"Dune.exe" ~with_:"Dune__exe"
+    else str
+  in
   let file_content =
     List.to_array @@ ("" :: (Stdio.In_channel.read_lines @@ cut_build_dir filename))
   in
-  with_info filename (fun info -> typed_on_structure info file_content typedtree)
+  with_info filename (fun info -> typed_on_structure info modname file_content typedtree)
 ;;
 
 let () =
@@ -92,7 +99,7 @@ let () =
     match Config.mode () with
     | Config.Unspecified -> ()
     | Dir path ->
-      LoadDune.analyze_dir ~cmt:process_cmt_typedtree ~cmti:(fun _ _ -> ()) path;
+      LoadDune.analyze_dir ~cmt:process_cmt_typedtree ~cmti:(fun _ _ _ -> ()) path;
       CollectedMetrics.report (Config.verbose ()) ()
   in
   ()

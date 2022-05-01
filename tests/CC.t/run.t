@@ -1,7 +1,7 @@
   $ dune build
   $ mylinter . -met-list CC | sed -re "/^$/d"
   FILE Functions.ml
-  MODULE Functions.ml in Functions.ml
+  MODULE Functions in Functions.ml
   ____Function_metrics____
   FUNCTION f <1:0-1:50> in Functions.ml
   CC-based_CC-ord: 3
