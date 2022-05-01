@@ -168,6 +168,11 @@ let print_file_info verbose filename =
   let key = Item.File filename in
   let modules = get_subitems key in
   Format.printf "FILE %s\n" filename;
+  if verbose
+  then (
+    Format.printf "\nDeclared modules:\n";
+    List.iter modules ~f:(Format.printf "%s\n"));
+  Format.printf "\n";
   List.iter modules ~f:(fun x -> print_module_metrics verbose filename x)
 ;;
 

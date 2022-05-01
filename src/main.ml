@@ -48,7 +48,7 @@ let typed_on_structure info modname file_content typedtree =
     ; groups_of_metrics
     ; metrics_to_show = !metrics_to_show
     ; verbose_metrics = !verbose_metrics
-    ; file_module = modname
+    ; cur_module = modname
     }
   in
   build_iterator

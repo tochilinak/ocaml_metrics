@@ -2,6 +2,8 @@
   $ mylinter . -v-list Halstead -met-list Halstead | sed -re "/^$/d"
   Analyzing file: _build/default/Functions.ml
   FILE Functions.ml
+  Declared modules:
+  Functions
   MODULE Functions in Functions.ml
   Declared functions:
   f <1:0-1:10>
