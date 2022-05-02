@@ -106,7 +106,7 @@ let run _ _ fallback =
   ; value_binding =
       (fun self vb ->
         let old_vb_name = ctx.cur_value_binding in
-        ctx.cur_value_binding <- get_vb_name vb;
+        ctx.cur_value_binding <- get_vb_name_ident vb;
         fallback.value_binding self vb;
         ctx.cur_value_binding <- old_vb_name)
   }

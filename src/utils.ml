@@ -99,9 +99,16 @@ let rec_flag_to_bool rec_flag =
   | Recursive -> true
 ;;
 
+type function_name =
+  { name_ident_list : Ident.t list
+  ; name_string : string
+  }
+
 type function_info =
   { is_rec : bool
-  ; name : Ident.t option
+  ; name : function_name
+  ; block : function_name list
+  ; ind_inside_block : int
   }
 
 let range from till =
@@ -110,11 +117,28 @@ let range from till =
       | x -> Some (x, x + 1))
 ;;
 
-let get_vb_name vb =
+let get_vb_name_ident vb =
   let open Typedtree in
   match vb.vb_pat.pat_desc with
   | Tpat_var (x, _) -> Some x
   | _ -> None
+;;
+
+let get_vb_name_list vb =
+  let open Typedtree in
+  let rec helper pat =
+    match pat.pat_desc with
+    | Tpat_var (x, _) -> [ x ]
+    | Tpat_tuple list -> List.fold list ~init:[] ~f:(fun acc x -> helper x @ acc)
+    | _ -> []
+  in
+  List.rev @@ helper vb.vb_pat
+;;
+
+let get_vb_name_string vb =
+  match get_vb_name_list vb with
+  | [] -> None
+  | x -> Some (String.concat ~sep:"," (List.map x ~f:Ident.name))
 ;;
 
 type metric_result =

@@ -73,13 +73,13 @@ let collect_module_metrics info =
 
 let get_value_name vb =
   let loc = short_location_str vb.vb_loc in
-  match get_vb_name vb with
-  | Some x -> Format.sprintf "%s <%s>" (Ident.name x) loc
+  match get_vb_name_string vb with
+  | Some x -> Format.sprintf "%s <%s>" x loc
   | None -> Format.sprintf "<Value on %s>" loc
 ;;
 
 let function_value_binding info func_info self x =
-  let value_name = get_value_name x in
+  let value_name = func_info.name.name_string in
   CollectedMetrics.add_function info.filename info.cur_module value_name;
   before_function info func_info;
   self.value_binding self x;
@@ -87,11 +87,21 @@ let function_value_binding info func_info self x =
 ;;
 
 let my_value_bindings info rec_flag self list =
-  List.iter list ~f:(fun x ->
+  let get_name vb =
+    { name_ident_list = get_vb_name_list vb; name_string = get_value_name vb }
+  in
+  let block = List.map list ~f:get_name in
+  List.iteri list ~f:(fun i x ->
       if x.vb_loc.loc_ghost
       then self.value_binding self x
       else (
-        let func_info = { is_rec = rec_flag_to_bool rec_flag; name = get_vb_name x } in
+        let func_info =
+          { is_rec = rec_flag_to_bool rec_flag
+          ; name = get_name x
+          ; block
+          ; ind_inside_block = i
+          }
+        in
         function_value_binding info func_info self x))
 ;;
 

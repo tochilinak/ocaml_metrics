@@ -2,14 +2,16 @@ open Base
 module Format = Caml.Format
 open Zanuda_core
 open Zanuda_core.Utils
-module MyGraph = Graph.Imperative.Graph.Concrete (Ident.T)
-module MyDigraph = Graph.Imperative.Digraph.Concrete (Ident.T)
+module MyGraph = Graph.Imperative.Graph.Concrete (String)
+module MyDigraph = Graph.Imperative.Digraph.Concrete (String)
+module Hashtbl = Caml.Hashtbl.Make (Ident.T)
 
 type context =
   { mutable num_of_methods : int
   ; mutable possible_arcs : int
-  ; mutable cur_function : Ident.t option
-  ; mutable functions : Ident.t list
+  ; mutable cur_function : string
+  ; mutable idents : Ident.t list
+  ; ident_to_vertex : string Hashtbl.t
   ; digraph : MyDigraph.t
   ; graph : MyGraph.t
   }
@@ -21,8 +23,9 @@ let before_module () =
     contexts
     { num_of_methods = 0
     ; possible_arcs = 0
-    ; cur_function = None
-    ; functions = []
+    ; cur_function = ""
+    ; idents = []
+    ; ident_to_vertex = Hashtbl.create 10
     ; digraph = MyDigraph.create ()
     ; graph = MyGraph.create ()
     }
@@ -35,33 +38,36 @@ let get_function_extra_info () = []
 
 let before_function func_info =
   let ctx = get_ctx () in
-  ctx.cur_function <- func_info.name;
-  match func_info.name with
-  | None -> ()
-  | Some x ->
-    let loop = if func_info.is_rec then 1 else 0 in
-    ctx.possible_arcs <- ctx.possible_arcs + loop + ctx.num_of_methods;
-    ctx.num_of_methods <- ctx.num_of_methods + 1;
-    ctx.functions <- x :: ctx.functions;
-    MyDigraph.add_vertex ctx.digraph x;
-    MyGraph.add_vertex ctx.graph x
+  ctx.cur_function <- func_info.name.name_string;
+  let outside_block = ctx.num_of_methods - func_info.ind_inside_block in
+  let inside_block = if func_info.is_rec then List.length func_info.block else 0 in
+  ctx.possible_arcs <- ctx.possible_arcs + outside_block + inside_block;
+  ctx.num_of_methods <- ctx.num_of_methods + 1;
+  if func_info.ind_inside_block == 0
+  then
+    List.iter func_info.block ~f:(fun { name_ident_list; name_string } ->
+        ctx.idents <- name_ident_list @ ctx.idents;
+        List.iter name_ident_list ~f:(fun x ->
+            Hashtbl.add ctx.ident_to_vertex x name_string);
+        MyDigraph.add_vertex ctx.digraph name_string;
+        MyGraph.add_vertex ctx.graph name_string)
 ;;
 
 let get_module_extra_info () =
   let ctx = get_ctx () in
-  "COHESION GRAPH:"
-  :: MyGraph.fold_edges
-       (fun u v acc -> Format.sprintf "%s -> %s" (Ident.name u) (Ident.name v) :: acc)
-       ctx.graph
+  Format.sprintf "Maximum possible arcs: %d" ctx.possible_arcs
+  :: "COHESION GRAPH:"
+  :: MyDigraph.fold_edges
+       (fun u v acc -> Format.sprintf "%s -> %s" u v :: acc)
+       ctx.digraph
        []
 ;;
 
 let calc_lcom1 () =
   let ctx = get_ctx () in
   let int_of_bool b = if b then 1 else 0 in
-  let ind_func_list =
-    List.zip_exn (List.mapi ctx.functions ~f:(fun i _ -> i)) ctx.functions
-  in
+  let func_list = MyDigraph.fold_vertex (fun v acc -> v :: acc) ctx.digraph [] in
+  let ind_func_list = List.zip_exn (List.mapi func_list ~f:(fun i _ -> i)) func_list in
   let func_pairs = List.cartesian_product ind_func_list ind_func_list in
   List.fold func_pairs ~init:0 ~f:(fun acc ((i1, func1), (i2, func2)) ->
       if i1 >= i2
@@ -127,10 +133,11 @@ let run _ _ fallback =
               let one_pident ident =
                 path_pident @@ cst ~to_string:Ident.name ~equal:Ident.T.equal ident
               in
-              MyGraph.fold_vertex
-                (fun func acc -> acc ||| map0 (one_pident func) ~f:func)
-                ctx.graph
-                reject
+              List.fold
+                ctx.idents
+                ~f:(fun acc id ->
+                  acc ||| map0 (one_pident id) ~f:(Hashtbl.find ctx.ident_to_vertex id))
+                ~init:reject
             in
             texp_ident cur_pident
           in
@@ -144,9 +151,7 @@ let run _ _ fallback =
               MyGraph.add_edge ctx.graph cur_func func)
             ()
         in
-        (match ctx.cur_function with
-        | None -> ()
-        | Some x -> look_for_edge x);
+        if not @@ String.equal ctx.cur_function "" then look_for_edge ctx.cur_function;
         fallback.expr self expr)
   }
 ;;
