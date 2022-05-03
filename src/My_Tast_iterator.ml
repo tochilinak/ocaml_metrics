@@ -20,9 +20,9 @@ let before_function info func_info =
       L.before_function func_info)
 ;;
 
-let before_module info =
+let before_module info mod_info =
   List.iter info.groups_of_metrics ~f:(fun (module L : METRIC.GROUP) ->
-      L.before_module ())
+      L.before_module mod_info)
 ;;
 
 let collect_results
@@ -121,7 +121,7 @@ let my_module_expr info self mod_expr =
   if is_named_module
   then (
     CollectedMetrics.add_module info.filename info.cur_module;
-    before_module info);
+    before_module info { mod_name = info.cur_module });
   default_iterator.module_expr self mod_expr;
   if is_named_module then collect_module_metrics info
 ;;
@@ -144,7 +144,7 @@ let my_structure info self str =
   if is_root
   then (
     CollectedMetrics.add_module info.filename info.cur_module;
-    before_module info);
+    before_module info { mod_name = info.cur_module });
   default_iterator.structure self str;
   if is_root then collect_module_metrics info
 ;;

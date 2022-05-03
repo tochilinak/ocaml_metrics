@@ -15,7 +15,7 @@ let get_function_metrics_result () = []
 let get_function_extra_info () = []
 let get_module_extra_info () = Queue.to_list ctx.notes
 
-let before_module () =
+let before_module _ =
   ctx.result <- 0;
   Queue.clear ctx.notes
 ;;

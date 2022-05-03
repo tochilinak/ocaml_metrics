@@ -14,7 +14,7 @@ let metrics_group_id = "LOC-based"
 let get_module_metrics_result () = []
 let get_module_extra_info () = []
 let get_function_extra_info () = []
-let before_module () = ctx.last_structure_item <- false
+let before_module _ = ctx.last_structure_item <- false
 
 let before_function _ =
   ctx.code_lines <- 0;

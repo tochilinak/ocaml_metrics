@@ -10,6 +10,7 @@ let groups_of_metrics =
   ; (module CyclomaticComplexity : METRIC.GROUP)
   ; (module Function_count : METRIC.GROUP)
   ; (module Cohesion : METRIC.GROUP)
+  ; (module Coupling : METRIC.GROUP)
   ]
 ;;
 

@@ -18,7 +18,7 @@ type context =
 
 let contexts = Stack.create ()
 
-let before_module () =
+let before_module _ =
   Stack.push
     contexts
     { num_of_methods = 0
@@ -36,7 +36,7 @@ let metrics_group_id = "cohesion"
 let get_function_metrics_result () = []
 let get_function_extra_info () = []
 
-let before_function func_info =
+let before_function (func_info : function_info) =
   let ctx = get_ctx () in
   ctx.cur_function <- func_info.name.name_string;
   let outside_block = ctx.num_of_methods - func_info.ind_inside_block in

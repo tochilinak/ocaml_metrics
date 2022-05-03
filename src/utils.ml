@@ -108,6 +108,8 @@ type function_info =
   ; ind_inside_block : int
   }
 
+type module_info = { mod_name : string }
+
 let range from till =
   Sequence.unfold ~init:from ~f:(function
       | x when x > till -> None

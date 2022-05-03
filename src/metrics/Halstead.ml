@@ -17,7 +17,7 @@ let ctx =
 ;;
 
 let metrics_group_id = "Halstead"
-let before_module () = ()
+let before_module _ = ()
 let get_module_metrics_result () = []
 let get_module_extra_info () = []
 
