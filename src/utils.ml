@@ -73,10 +73,7 @@ module Report = struct
   ;;
 end
 
-let location_str loc =
-  Location.print_loc Format.str_formatter loc;
-  String.drop_prefix (String.drop_suffix (Format.flush_str_formatter ()) 4) 4
-;;
+let location_str loc = Format.asprintf "%a" Location.print_loc loc
 
 let short_location_str loc =
   let open Location in
