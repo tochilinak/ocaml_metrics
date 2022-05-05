@@ -20,6 +20,7 @@ let metrics_group_id = "Halstead"
 let before_module _ = ()
 let get_module_metrics_result () = []
 let get_module_extra_info () = []
+let collect_delayed_metrics () = ()
 
 let before_function _ =
   Hashtbl.clear ctx.operand_dictionary;

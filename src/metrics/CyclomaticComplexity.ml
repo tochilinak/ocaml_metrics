@@ -20,6 +20,7 @@ let before_module _ = ()
 let get_function_extra_info () = []
 let get_module_metrics_result () = []
 let get_module_extra_info () = []
+let collect_delayed_metrics () = ()
 
 let before_function (func_info : function_info) =
   ctx.res_simple <- 1;

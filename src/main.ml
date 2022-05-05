@@ -95,6 +95,8 @@ let () =
     | Config.Unspecified -> ()
     | Dir path ->
       LoadDune.analyze_dir ~cmt:process_cmt_typedtree ~cmti:(fun _ _ _ -> ()) path;
+      List.iter groups_of_metrics ~f:(fun (module L : METRIC.GROUP) ->
+          L.collect_delayed_metrics ());
       CollectedMetrics.Printer.report (Config.verbose ()) ()
   in
   ()

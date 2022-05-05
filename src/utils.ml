@@ -143,3 +143,4 @@ let get_vb_name_string vb =
 type metric_result =
   | Int_result of int
   | Float_result of float
+  | Delayed_result of metric_result option ref

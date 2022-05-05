@@ -15,6 +15,7 @@ let get_module_metrics_result () = []
 let get_module_extra_info () = []
 let get_function_extra_info () = []
 let before_module _ = ctx.last_structure_item <- false
+let collect_delayed_metrics () = ()
 
 let before_function _ =
   ctx.code_lines <- 0;

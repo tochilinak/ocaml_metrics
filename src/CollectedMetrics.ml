@@ -91,12 +91,20 @@ module Printer = struct
         Format.printf "\n")
   ;;
 
-  let print_metric width metric_id value =
-    let fstr = "%" ^ Int.to_string width ^ "s: " in
-    Format.printf (Scanf.format_from_string fstr "%s") metric_id;
+  let rec print_metric ?(is_rec = false) width metric_id value =
+    if not is_rec
+    then (
+      let fstr = "%" ^ Int.to_string width ^ "s: " in
+      Format.printf (Scanf.format_from_string fstr "%s") metric_id);
     match value with
     | Int_result x -> Format.printf "%d\n" x
     | Float_result x -> Format.printf "%.2f\n" x
+    | Delayed_result x ->
+      (match !x with
+      | Some y ->
+        assert (not is_rec);
+        print_metric ~is_rec:true width metric_id y
+      | None -> assert false)
   ;;
 
   let default_find dict key =

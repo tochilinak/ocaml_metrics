@@ -35,6 +35,7 @@ let get_ctx () = Stack.top_exn contexts
 let metrics_group_id = "cohesion"
 let get_function_metrics_result () = []
 let get_function_extra_info () = []
+let collect_delayed_metrics () = ()
 
 let before_function (func_info : function_info) =
   let ctx = get_ctx () in
