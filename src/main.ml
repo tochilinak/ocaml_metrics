@@ -95,7 +95,7 @@ let () =
     | Config.Unspecified -> ()
     | Dir path ->
       LoadDune.analyze_dir ~cmt:process_cmt_typedtree ~cmti:(fun _ _ _ -> ()) path;
-      CollectedMetrics.report (Config.verbose ()) ()
+      CollectedMetrics.Printer.report (Config.verbose ()) ()
   in
   ()
 ;;
