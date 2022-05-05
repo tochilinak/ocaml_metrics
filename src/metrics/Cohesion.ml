@@ -53,14 +53,25 @@ let before_function (func_info : function_info) =
         MyGraph.add_vertex ctx.graph name_string)
 ;;
 
+module Dot_info = struct
+  include MyDigraph
+  let graph_attributes _ = []
+  let default_vertex_attributes _ = []
+  let vertex_attributes _ = []
+  let get_subgraph _ = None
+  let default_edge_attributes _ = []
+  let edge_attributes _ = []
+  let vertex_name vertex = "\"" ^ vertex ^ "\"";;
+end
+
+module Printer = Graph.Graphviz.Dot (Dot_info)
+
 let get_module_extra_info () =
   let ctx = get_ctx () in
   Format.sprintf "Maximum possible arcs: %d" ctx.possible_arcs
   :: "COHESION GRAPH:"
-  :: MyDigraph.fold_edges
-       (fun u v acc -> Format.sprintf "%s -> %s" u v :: acc)
-       ctx.digraph
-       []
+  :: (Format.asprintf "%a\n" Printer.fprint_graph ctx.digraph)
+  :: []
 ;;
 
 let calc_lcom1 () =

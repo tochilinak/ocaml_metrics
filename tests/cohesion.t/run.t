@@ -1,5 +1,5 @@
   $ dune build
-  $ mylinter . -met-list cohesion -v-list cohesion | sed -re "/^$/d"
+  $ mylinter . -met-list cohesion -v-list cohesion | sed -re "s/ *$//" | sed -re "/^$/d"
   Analyzing file: _build/default/Cohesion.ml
   FILE Cohesion.ml
   Declared modules:
@@ -25,9 +25,16 @@
   _______extra_info_______
   Maximum possible arcs: 10
   COHESION GRAPH:
-  f5 <6:2-6:13> -> f4 <5:2-5:18>
-  f2 <3:2-3:13> -> f1 <2:2-2:14>
-  f3 <4:2-4:13> -> f1 <2:2-2:14>
+  digraph G {
+    "f4 <5:2-5:18>";
+    "f1 <2:2-2:14>";
+    "f3 <4:2-4:13>";
+    "f2 <3:2-3:13>";
+    "f5 <6:2-6:13>";
+    "f3 <4:2-4:13>" -> "f1 <2:2-2:14>";
+    "f2 <3:2-3:13>" -> "f1 <2:2-2:14>";
+    "f5 <6:2-6:13>" -> "f4 <5:2-5:18>";
+    }
   MODULE Cohesion.B in Cohesion.ml
   _____Module_metrics_____
      cohesion_COH: 0.50
@@ -41,8 +48,12 @@
   _______extra_info_______
   Maximum possible arcs: 4
   COHESION GRAPH:
-  g <17:2-17:59> -> f <16:2-16:57>
-  f <16:2-16:57> -> g <17:2-17:59>
+  digraph G {
+    "f <16:2-16:57>";
+    "g <17:2-17:59>";
+    "f <16:2-16:57>" -> "g <17:2-17:59>";
+    "g <17:2-17:59>" -> "f <16:2-16:57>";
+    }
   MODULE Cohesion.C in Cohesion.ml
   _____Module_metrics_____
      cohesion_COH: 1.00
@@ -56,6 +67,10 @@
   _______extra_info_______
   Maximum possible arcs: 0
   COHESION GRAPH:
+  digraph G {
+    "g <25:2-25:21>";
+    "f <24:2-24:17>";
+    }
   MODULE Cohesion.D in Cohesion.ml
   _____Module_metrics_____
      cohesion_COH: 1.00
@@ -69,7 +84,11 @@
   _______extra_info_______
   Maximum possible arcs: 1
   COHESION GRAPH:
-  print_mod_name <31:2-31:48> -> mod_name <30:2-30:20>
+  digraph G {
+    "mod_name <30:2-30:20>";
+    "print_mod_name <31:2-31:48>";
+    "print_mod_name <31:2-31:48>" -> "mod_name <30:2-30:20>";
+    }
   MODULE Cohesion.D.E in Cohesion.ml
   _____Module_metrics_____
      cohesion_COH: 1.00
@@ -83,7 +102,11 @@
   _______extra_info_______
   Maximum possible arcs: 1
   COHESION GRAPH:
-  print_mod_name <35:4-35:52> -> mod_name_E <34:4-34:26>
+  digraph G {
+    "print_mod_name <35:4-35:52>";
+    "mod_name_E <34:4-34:26>";
+    "print_mod_name <35:4-35:52>" -> "mod_name_E <34:4-34:26>";
+    }
   MODULE Cohesion.F in Cohesion.ml
   _____Module_metrics_____
      cohesion_COH: 0.67
@@ -99,7 +122,13 @@
   _______extra_info_______
   Maximum possible arcs: 6
   COHESION GRAPH:
-  <Value on 45:2-47:16> -> print_b <43:2-43:34>
-  <Value on 45:2-47:16> -> print_a <42:2-42:34>
-  print_b <43:2-43:34> -> a,b <41:2-41:21>
-  print_a <42:2-42:34> -> a,b <41:2-41:21>
+  digraph G {
+    "print_a <42:2-42:34>";
+    "print_b <43:2-43:34>";
+    "a,b <41:2-41:21>";
+    "<Value on 45:2-47:16>";
+    "print_a <42:2-42:34>" -> "a,b <41:2-41:21>";
+    "print_b <43:2-43:34>" -> "a,b <41:2-41:21>";
+    "<Value on 45:2-47:16>" -> "print_a <42:2-42:34>";
+    "<Value on 45:2-47:16>" -> "print_b <43:2-43:34>";
+    }
