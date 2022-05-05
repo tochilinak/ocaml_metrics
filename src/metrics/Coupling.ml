@@ -66,7 +66,7 @@ let before_module mod_info =
   Stack.push ctx.module_stack mod_info.mod_name;
   (*print_endline mod_info.mod_name;*)
   let _ =
-    Hashtbl.add ctx.metrics_refs ~key:mod_info.mod_name ~data:(create_metrics_refs ())
+    Hashtbl.add_exn ctx.metrics_refs ~key:mod_info.mod_name ~data:(create_metrics_refs ())
   in
   ()
 ;;
@@ -84,7 +84,8 @@ let calc_fan_out modname =
       (get_paths modname)
       ~f:(fun x ->
         let name = fst @@ String.rsplit2_exn x ~on:'.' in
-        if not (String.equal modname name) && List.mem ctx.module_list name ~equal:String.equal
+        if (not (String.equal modname name))
+           && List.mem ctx.module_list name ~equal:String.equal
         then Some name
         else None)
   in

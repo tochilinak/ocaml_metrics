@@ -122,6 +122,7 @@ let my_module_expr info self mod_expr =
   then (
     CollectedMetrics.add_module info.filename info.cur_module;
     before_module info { mod_name = info.cur_module });
+  info.inside_module_binding <- false;
   default_iterator.module_expr self mod_expr;
   if is_named_module then collect_module_metrics info
 ;;
@@ -134,7 +135,6 @@ let my_module_binding info self mb =
     info.cur_module <- info.cur_module ^ "." ^ Ident.name x;
     info.inside_module_binding <- true;
     default_iterator.module_binding self mb;
-    info.inside_module_binding <- false;
     info.cur_module <- old_cur_module
 ;;
 
