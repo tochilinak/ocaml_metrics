@@ -15,6 +15,7 @@ let get_function_metrics_result () = []
 let get_function_extra_info () = []
 let get_module_extra_info () = Queue.to_list ctx.notes
 let collect_delayed_metrics () = ()
+let get_project_extra_info () = []
 
 let before_module _ =
   ctx.result <- 0;

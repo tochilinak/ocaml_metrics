@@ -4,11 +4,13 @@ open Utils
 
 module Item = struct
   type t =
+    | Root
     | File of string (* filename *)
     | Module of string * string (* filename, modname *)
     | Function of string * string * string (* filename, modname, func_name *)
 
   let to_string = function
+    | Root -> ""
     | File x -> x
     | Module (x, y) -> x ^ ":" ^ y
     | Function (x, y, z) -> x ^ ":" ^ y ^ ":" ^ z
@@ -20,15 +22,13 @@ module Item = struct
 end
 
 type context =
-  { file_list : string Queue.t
-  ; declarations : (Item.t, Item.t list) Hashtbl.t
+  { declarations : (Item.t, Item.t list) Hashtbl.t
   ; metric_results : (Item.t, (string * metric_result) list) Hashtbl.t
   ; metric_extra_info : (Item.t, string list) Hashtbl.t
   }
 
 let ctx : context =
-  { file_list = Queue.create ()
-  ; declarations = Hashtbl.create (module Item)
+  { declarations = Hashtbl.create (module Item)
   ; metric_results = Hashtbl.create (module Item)
   ; metric_extra_info = Hashtbl.create (module Item)
   }
@@ -41,8 +41,8 @@ let add_value ~table ~key ~value =
       | Some list -> value :: list)
 ;;
 
-let add_file = Queue.enqueue ctx.file_list
 let add_declaration = add_value ~table:ctx.declarations
+let add_file filename = add_declaration ~key:Root ~value:(File filename)
 
 let add_module filename modname =
   add_declaration ~key:(File filename) ~value:(Module (filename, modname))
@@ -78,6 +78,7 @@ let add_extra_info where extra_info =
 
 let add_extra_info_module = f_on_module add_extra_info
 let add_extra_info_func = f_on_func add_extra_info
+let add_extra_info_project = add_extra_info Item.Root
 
 module Printer = struct
   let print_extra_info verbose where =
@@ -148,6 +149,7 @@ module Printer = struct
 
   let item_names items =
     List.map items ~f:(function
+        | Item.Root -> ""
         | Item.File x | Item.Module (_, x) | Item.Function (_, _, x) -> x)
   ;;
 
@@ -189,5 +191,8 @@ module Printer = struct
     List.iter modules ~f:(fun x -> print_module_metrics verbose filename x)
   ;;
 
-  let report verbose () = Queue.iter ctx.file_list ~f:(print_file_info verbose)
+  let report verbose () =
+    print_extra_info verbose Item.Root;
+    List.iter (get_subitems Item.Root) ~f:(print_file_info verbose)
+  ;;
 end

@@ -108,9 +108,10 @@ type function_info =
   ; ind_inside_block : int
   }
 
-type module_info = {
-  mod_name : string;
-  filename : string }
+type module_info =
+  { mod_name : string
+  ; filename : string
+  }
 
 let range from till =
   Sequence.unfold ~init:from ~f:(function
@@ -146,3 +147,15 @@ type metric_result =
   | Int_result of int
   | Float_result of float
   | Delayed_result of metric_result option ref
+
+module Dot_info (X : Graph.Sig.G) = struct
+  include X
+
+  let graph_attributes _ = []
+  let default_vertex_attributes _ = []
+  let vertex_attributes _ = []
+  let get_subgraph _ = None
+  let default_edge_attributes _ = []
+  let edge_attributes _ = []
+  let vertex_name vertex = "\"" ^ vertex ^ "\""
+end

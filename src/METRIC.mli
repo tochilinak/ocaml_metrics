@@ -16,4 +16,5 @@ module type GROUP = sig
   val before_module : Utils.module_info -> unit
   val before_function : Utils.function_info -> unit
   val collect_delayed_metrics : unit -> unit
+  val get_project_extra_info : unit -> string list
 end

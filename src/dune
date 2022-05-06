@@ -13,7 +13,7 @@
   CollectedMetrics
   LoadDune)
  (modules_without_implementation METRIC)
- (libraries ppxlib sexplib yojson Tast_pattern)
+ (libraries ppxlib sexplib yojson Tast_pattern ocamlgraph)
  (preprocess
   (pps ppx_optcomp ppx_sexp_conv ppx_inline_test))
  (inline_tests))

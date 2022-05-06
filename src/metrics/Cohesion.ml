@@ -36,6 +36,7 @@ let metrics_group_id = "cohesion"
 let get_function_metrics_result () = []
 let get_function_extra_info () = []
 let collect_delayed_metrics () = ()
+let get_project_extra_info () = []
 
 let before_function (func_info : function_info) =
   let ctx = get_ctx () in
@@ -54,19 +55,7 @@ let before_function (func_info : function_info) =
         MyGraph.add_vertex ctx.graph name_string)
 ;;
 
-module Dot_info = struct
-  include MyDigraph
-
-  let graph_attributes _ = []
-  let default_vertex_attributes _ = []
-  let vertex_attributes _ = []
-  let get_subgraph _ = None
-  let default_edge_attributes _ = []
-  let edge_attributes _ = []
-  let vertex_name vertex = "\"" ^ vertex ^ "\""
-end
-
-module Printer = Graph.Graphviz.Dot (Dot_info)
+module Printer = Graph.Graphviz.Dot (Dot_info (MyDigraph))
 
 let get_module_extra_info () =
   let ctx = get_ctx () in

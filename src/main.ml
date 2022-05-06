@@ -79,14 +79,12 @@ let process_cmt_typedtree filename dune_modname typedtree =
   let modname =
     let str = String.substr_replace_all dune_modname ~pattern:"__" ~with_:"." in
     if String.is_prefix str ~prefix:"Dune.exe"
-    then
-        let dir = Filename.dirname cut_filename in
-        String.substr_replace_first str ~pattern:"Dune.exe" ~with_:(dir ^ "|Dune__exe")
+    then (
+      let dir = Filename.dirname cut_filename in
+      String.substr_replace_first str ~pattern:"Dune.exe" ~with_:(dir ^ "|Dune__exe"))
     else str
   in
-  let file_content =
-    List.to_array @@ ("" :: (Stdio.In_channel.read_lines cut_filename))
-  in
+  let file_content = List.to_array @@ ("" :: Stdio.In_channel.read_lines cut_filename) in
   with_info filename (fun info -> typed_on_structure info modname file_content typedtree)
 ;;
 
@@ -99,7 +97,9 @@ let () =
     | Dir path ->
       LoadDune.analyze_dir ~cmt:process_cmt_typedtree ~cmti:(fun _ _ _ -> ()) path;
       List.iter groups_of_metrics ~f:(fun (module L : METRIC.GROUP) ->
-          L.collect_delayed_metrics ());
+          L.collect_delayed_metrics ();
+          if List.mem !verbose_metrics L.metrics_group_id ~equal:String.equal
+          then CollectedMetrics.add_extra_info_project (L.get_project_extra_info ()));
       CollectedMetrics.Printer.report (Config.verbose ()) ()
   in
   ()

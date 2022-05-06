@@ -3,6 +3,7 @@ module Format = Caml.Format
 open Zanuda_core
 open Zanuda_core.Utils
 module Ident_Hashtbl = Caml.Hashtbl.Make (Ident.T)
+module MyDigraph = Graph.Imperative.Digraph.Concrete (String)
 
 let metrics_group_id = "coupling"
 let fan_out = "FAN-OUT"
@@ -15,6 +16,7 @@ type context =
   ; paths_in_module : (string, (string, String.comparator_witness) Set.t) Hashtbl.t
   ; metrics_refs : (string, (string, metric_result option ref) Hashtbl.t) Hashtbl.t
   ; mutable filename : string
+  ; module_call_graph : MyDigraph.t
   }
 
 let create_metrics_refs () =
@@ -37,6 +39,7 @@ let ctx =
   ; paths_in_module = Hashtbl.create (module String)
   ; metrics_refs = Hashtbl.create (module String)
   ; filename = ""
+  ; module_call_graph = MyDigraph.create ()
   }
 ;;
 
@@ -54,11 +57,11 @@ let rec path_name path =
   match path with
   | Pident id ->
     if Ident.global id
-    then
+    then (
       let name = Ident.name id in
       if String.is_prefix name ~prefix:"Dune__exe"
-      then (Filename.dirname ctx.filename) ^ "|" ^ name
-      else name
+      then Filename.dirname ctx.filename ^ "|" ^ name
+      else name)
     else (
       match Ident_Hashtbl.find_opt ctx.module_of_ident id with
       | None -> cur_module () ^ "." ^ Ident.name id
@@ -70,6 +73,7 @@ let rec path_name path =
 let before_module mod_info =
   ctx.module_list <- mod_info.mod_name :: ctx.module_list;
   ctx.filename <- mod_info.filename;
+  MyDigraph.add_vertex ctx.module_call_graph mod_info.mod_name;
   Stack.push ctx.module_stack mod_info.mod_name;
   (*print_endline mod_info.mod_name;*)
   let _ =
@@ -84,7 +88,7 @@ let get_paths modname =
   | Some x -> x
 ;;
 
-let calc_fan_out modname =
+let add_out_edges modname =
   let modules =
     Set.filter_map
       (module String)
@@ -98,7 +102,14 @@ let calc_fan_out modname =
   in
   (*print_endline @@ "\n____" ^ modname ^ "____";
   Set.iter modules ~f:print_endline;*)
-  Set.length modules
+  Set.iter modules ~f:(fun x -> MyDigraph.add_edge ctx.module_call_graph modname x)
+;;
+
+module Printer = Graph.Graphviz.Dot (Dot_info (MyDigraph))
+
+let get_project_extra_info () =
+    [ "Coupling graph:"
+    ; Format.asprintf "%a\n" Printer.fprint_graph ctx.module_call_graph ]
 ;;
 
 let get_metrics_refs = Hashtbl.find_exn ctx.metrics_refs
@@ -115,7 +126,9 @@ let collect_delayed_metrics () =
       let cur_metrics_refs = get_metrics_refs modname in
       let get_ref = Hashtbl.find_exn cur_metrics_refs in
       let fan_out_ref = get_ref fan_out in
-      fan_out_ref := Some (Int_result (calc_fan_out modname)))
+      add_out_edges modname;
+      fan_out_ref
+        := Some (Int_result (MyDigraph.out_degree ctx.module_call_graph modname)))
 ;;
 
 let before_function (func_info : function_info) =
