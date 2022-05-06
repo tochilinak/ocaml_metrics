@@ -14,6 +14,7 @@ type context =
   ; module_of_ident : string Ident_Hashtbl.t
   ; paths_in_module : (string, (string, String.comparator_witness) Set.t) Hashtbl.t
   ; metrics_refs : (string, (string, metric_result option ref) Hashtbl.t) Hashtbl.t
+  ; mutable filename : string
   }
 
 let create_metrics_refs () =
@@ -35,6 +36,7 @@ let ctx =
   ; module_of_ident = Ident_Hashtbl.create 10
   ; paths_in_module = Hashtbl.create (module String)
   ; metrics_refs = Hashtbl.create (module String)
+  ; filename = ""
   }
 ;;
 
@@ -52,7 +54,11 @@ let rec path_name path =
   match path with
   | Pident id ->
     if Ident.global id
-    then Ident.name id
+    then
+      let name = Ident.name id in
+      if String.is_prefix name ~prefix:"Dune__exe"
+      then (Filename.dirname ctx.filename) ^ "|" ^ name
+      else name
     else (
       match Ident_Hashtbl.find_opt ctx.module_of_ident id with
       | None -> cur_module () ^ "." ^ Ident.name id
@@ -63,6 +69,7 @@ let rec path_name path =
 
 let before_module mod_info =
   ctx.module_list <- mod_info.mod_name :: ctx.module_list;
+  ctx.filename <- mod_info.filename;
   Stack.push ctx.module_stack mod_info.mod_name;
   (*print_endline mod_info.mod_name;*)
   let _ =

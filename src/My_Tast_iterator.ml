@@ -112,19 +112,33 @@ let my_structure_item info self str_item =
 ;;
 
 let my_module_expr info self mod_expr =
-  let is_named_module_ mod_desc =
+  let get_module_name { mod_desc; mod_loc; _ } =
     match mod_desc with
-    | Tmod_structure _ -> info.inside_module_binding
-    | _ -> false
+    | Tmod_structure _ ->
+      if info.inside_module_binding
+      then (
+        info.inside_module_binding <- false;
+        Some info.cur_module)
+      else
+        Some
+          (info.cur_module
+          ^ Format.sprintf ".<module at %s>"
+          @@ short_location_str mod_loc)
+    | Tmod_functor _ | Tmod_constraint _ -> None
+    | _ ->
+      info.inside_module_binding <- false;
+      None
   in
-  let is_named_module = is_named_module_ mod_expr.mod_desc in
-  if is_named_module
-  then (
+  match get_module_name mod_expr with
+  | Some x ->
+    let old_modname = info.cur_module in
+    info.cur_module <- x;
     CollectedMetrics.add_module info.filename info.cur_module;
-    before_module info { mod_name = info.cur_module });
-  info.inside_module_binding <- false;
-  default_iterator.module_expr self mod_expr;
-  if is_named_module then collect_module_metrics info
+    before_module info { mod_name = info.cur_module; filename = info.filename };
+    default_iterator.module_expr self mod_expr;
+    collect_module_metrics info;
+    info.cur_module <- old_modname
+  | None -> default_iterator.module_expr self mod_expr
 ;;
 
 let my_module_binding info self mb =
@@ -144,7 +158,7 @@ let my_structure info self str =
   if is_root
   then (
     CollectedMetrics.add_module info.filename info.cur_module;
-    before_module info { mod_name = info.cur_module });
+    before_module info { mod_name = info.cur_module; filename = info.filename });
   default_iterator.structure self str;
   if is_root then collect_module_metrics info
 ;;

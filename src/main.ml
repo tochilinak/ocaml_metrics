@@ -75,14 +75,17 @@ let with_info filename f =
 let process_cmt_typedtree filename dune_modname typedtree =
   if Config.verbose () then printfn "Analyzing file: %s" filename;
   (*Format.printf "Typedtree ML:\n%a\n%!" Printtyped.implementation typedtree;*)
+  let cut_filename = cut_build_dir filename in
   let modname =
     let str = String.substr_replace_all dune_modname ~pattern:"__" ~with_:"." in
     if String.is_prefix str ~prefix:"Dune.exe"
-    then String.substr_replace_first str ~pattern:"Dune.exe" ~with_:"Dune__exe"
+    then
+        let dir = Filename.dirname cut_filename in
+        String.substr_replace_first str ~pattern:"Dune.exe" ~with_:(dir ^ "|Dune__exe")
     else str
   in
   let file_content =
-    List.to_array @@ ("" :: (Stdio.In_channel.read_lines @@ cut_build_dir filename))
+    List.to_array @@ ("" :: (Stdio.In_channel.read_lines cut_filename))
   in
   with_info filename (fun info -> typed_on_structure info modname file_content typedtree)
 ;;
