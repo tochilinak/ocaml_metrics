@@ -95,6 +95,7 @@ type my_general_pattern =
 val convert_gen_pat : 'k gen_pat -> my_general_pattern
 val nolabel : (Asttypes.arg_label, 'a, 'a) t
 val tpat_var : (string, 'a, 'b) t -> (pattern, 'a, 'b) t
+val tpat_var_ident : (Ident.t, 'a, 'b) t -> (pattern, 'a, 'b) t
 val tpat_exception : (value_pat, 'a, 'b) t -> (comp_pat, 'a, 'b) t
 val tpat_any : (value_pat, 'a, 'a) t
 val pident : (string, 'a, 'b) t -> (Path.t, 'a, 'b) t

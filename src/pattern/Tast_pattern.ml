@@ -403,6 +403,16 @@ let tpat_var (T fname) =
       | _ -> fail loc "tpat_var")
 ;;
 
+let tpat_var_ident (T fident) =
+  T
+    (fun ctx loc x k ->
+      match x.pat_desc with
+      | Tpat_var (x, _) ->
+        ctx.matched <- ctx.matched + 1;
+        k |> fident ctx loc x
+      | _ -> fail loc "tpat_var_ident")
+;;
+
 let tpat_exception (T fpat) =
   T
     (fun ctx loc x k ->

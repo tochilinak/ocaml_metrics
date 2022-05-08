@@ -7,7 +7,8 @@ module MyDigraph = Graph.Imperative.Digraph.Concrete (String)
 
 let metrics_group_id = "coupling"
 let fan_out = "FAN-OUT"
-let metrics_names = [ fan_out ]
+let fan_in = "FAN-IN"
+let metrics_names = [ fan_out; fan_in ]
 
 type context =
   { module_stack : string Stack.t
@@ -108,8 +109,7 @@ let add_out_edges modname =
 module Printer = Graph.Graphviz.Dot (Dot_info (MyDigraph))
 
 let get_project_extra_info () =
-    [ "Coupling graph:"
-    ; Format.asprintf "%a\n" Printer.fprint_graph ctx.module_call_graph ]
+  [ "Coupling graph:"; Format.asprintf "%a\n" Printer.fprint_graph ctx.module_call_graph ]
 ;;
 
 let get_metrics_refs = Hashtbl.find_exn ctx.metrics_refs
@@ -122,13 +122,15 @@ let get_module_metrics_result () =
 ;;
 
 let collect_delayed_metrics () =
+  List.iter ctx.module_list ~f:add_out_edges;
   List.iter ctx.module_list ~f:(fun modname ->
       let cur_metrics_refs = get_metrics_refs modname in
       let get_ref = Hashtbl.find_exn cur_metrics_refs in
       let fan_out_ref = get_ref fan_out in
-      add_out_edges modname;
+      let fan_in_ref = get_ref fan_in in
       fan_out_ref
-        := Some (Int_result (MyDigraph.out_degree ctx.module_call_graph modname)))
+        := Some (Int_result (MyDigraph.out_degree ctx.module_call_graph modname));
+      fan_in_ref := Some (Int_result (MyDigraph.in_degree ctx.module_call_graph modname)))
 ;;
 
 let before_function (func_info : function_info) =
@@ -154,8 +156,30 @@ let run _ _ fallback =
           expr.exp_loc
           ~on_error:(fun _desc () -> ())
           expr
-          (fun path_name () -> add_id (cur_module ()) path_name)
+          (fun path_name () ->
+            (*print_endline @@ path_name ^ " " ^ (short_location_str expr.exp_loc);*)
+            add_id (cur_module ()) path_name)
           ();
         fallback.expr self expr)
+  ; pat =
+      (fun self pat ->
+        let parse_pat : type k. k Tast_pattern.gen_pat -> unit =
+         fun pat ->
+          let open Tast_pattern in
+          let parse_pat = tpat_var_ident __ in
+          match Tast_pattern.convert_gen_pat pat with
+          | Value x ->
+            Tast_pattern.parse
+              parse_pat
+              pat.pat_loc
+              ~on_error:(fun _desc () -> ())
+              x
+              (fun var_name () ->
+                Ident_Hashtbl.add ctx.module_of_ident var_name (cur_module ()))
+              ()
+          | _ -> ()
+        in
+        parse_pat pat;
+        fallback.pat self pat)
   }
 ;;
