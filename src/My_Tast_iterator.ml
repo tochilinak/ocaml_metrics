@@ -122,23 +122,26 @@ let my_module_expr info self mod_expr =
         if info.inside_module_binding
         then (
           info.inside_module_binding <- false;
-          Some info.module_binding_name)
+          Some (info.module_binding_name, false))
         else
           Some
-            (info.cur_module
-            ^ Format.sprintf ".<module at %s>"
-            @@ short_location_str mod_loc)
+            ( info.cur_module
+              ^ Format.sprintf ".<module at %s>"
+              @@ short_location_str mod_loc
+            , true )
       | Tmod_functor _ | Tmod_constraint _ -> None
       | _ ->
         info.inside_module_binding <- false;
         None)
   in
   match get_module_name mod_expr with
-  | Some x ->
+  | Some (x, is_anonymous) ->
     let old_modname = info.cur_module in
     info.cur_module <- x;
     CollectedMetrics.add_module info.filename info.cur_module;
-    before_module info { mod_name = info.cur_module; filename = info.filename };
+    before_module
+      info
+      { mod_name = info.cur_module; filename = info.filename; is_anonymous };
     default_iterator.module_expr self mod_expr;
     collect_module_metrics info;
     info.cur_module <- old_modname
@@ -160,7 +163,9 @@ let my_structure info self str =
   if is_root
   then (
     CollectedMetrics.add_module info.filename info.cur_module;
-    before_module info { mod_name = info.cur_module; filename = info.filename });
+    before_module
+      info
+      { mod_name = info.cur_module; filename = info.filename; is_anonymous = false });
   default_iterator.structure self str;
   if is_root then collect_module_metrics info
 ;;

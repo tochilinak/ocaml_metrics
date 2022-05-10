@@ -111,6 +111,7 @@ type function_info =
 type module_info =
   { mod_name : string
   ; filename : string
+  ; is_anonymous : bool
   }
 
 let range from till =

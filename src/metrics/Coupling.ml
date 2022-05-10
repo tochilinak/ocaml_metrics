@@ -17,15 +17,14 @@ module MyDigraph =
 let metrics_group_id = "coupling"
 let fan_out = "FAN-OUT"
 let fan_in = "FAN-IN"
-let ca = "CA"
-let ce = "CE"
-let metrics_names = [ fan_out; fan_in; ca; ce ]
+let metrics_names = [ fan_out; fan_in ]
 
 type context =
   { module_stack : string Stack.t
   ; mutable module_list : string list
   ; module_of_ident : string Ident_Hashtbl.t
-  ; paths_in_module : (string, (string, String.comparator_witness) Set.t) Hashtbl.t
+  ; functions_in_module : (string, (string, String.comparator_witness) Set.t) Hashtbl.t
+  ; modules_in_module : (string, (string, String.comparator_witness) Set.t) Hashtbl.t
   ; metrics_refs : (string, (string, metric_result option ref) Hashtbl.t) Hashtbl.t
   ; mutable filename : string
   ; module_call_graph : MyDigraph.t
@@ -48,7 +47,8 @@ let ctx =
   { module_stack = Stack.create ()
   ; module_list = []
   ; module_of_ident = Ident_Hashtbl.create 10
-  ; paths_in_module = Hashtbl.create (module String)
+  ; functions_in_module = Hashtbl.create (module String)
+  ; modules_in_module = Hashtbl.create (module String)
   ; metrics_refs = Hashtbl.create (module String)
   ; filename = ""
   ; module_call_graph = MyDigraph.create ()
@@ -57,12 +57,15 @@ let ctx =
 
 let cur_module () = Stack.top_exn ctx.module_stack
 
-let add_id modname id =
-  Hashtbl.update ctx.paths_in_module modname ~f:(fun v ->
+let add_id table modname id =
+  Hashtbl.update table modname ~f:(fun v ->
       match v with
       | None -> Set.singleton (module String) id
       | Some set -> Set.add set id)
 ;;
+
+let add_function = add_id ctx.functions_in_module
+let add_module = add_id ctx.modules_in_module
 
 let rec path_name path =
   let open Path in
@@ -83,35 +86,42 @@ let rec path_name path =
 ;;
 
 let before_module mod_info =
-  ctx.module_list <- mod_info.mod_name :: ctx.module_list;
-  ctx.filename <- mod_info.filename;
-  MyDigraph.add_vertex ctx.module_call_graph mod_info.mod_name;
-  Stack.push ctx.module_stack mod_info.mod_name;
-  (*print_endline mod_info.mod_name;*)
   let _ =
     Hashtbl.add_exn ctx.metrics_refs ~key:mod_info.mod_name ~data:(create_metrics_refs ())
   in
-  ()
+  if mod_info.is_anonymous then add_module (cur_module ()) mod_info.mod_name;
+  ctx.module_list <- mod_info.mod_name :: ctx.module_list;
+  ctx.filename <- mod_info.filename;
+  MyDigraph.add_vertex ctx.module_call_graph mod_info.mod_name;
+  Stack.push ctx.module_stack mod_info.mod_name
 ;;
 
-let get_paths modname =
-  match Hashtbl.find ctx.paths_in_module modname with
+let get_paths table modname =
+  match Hashtbl.find table modname with
   | None -> Set.empty (module String)
   | Some x -> x
 ;;
 
+let get_function_set = get_paths ctx.functions_in_module
+let get_module_set = get_paths ctx.modules_in_module
+
 let add_out_edges modname =
   let get_module func = fst @@ String.rsplit2_exn func ~on:'.' in
   let func_by_modules =
-    Set.group_by (get_paths modname) ~equiv:(fun x y ->
+    Set.group_by (get_function_set modname) ~equiv:(fun x y ->
         String.equal (get_module x) (get_module y))
+  in
+  let add_edge dst label =
+    if (not @@ String.equal modname dst)
+       && List.mem ctx.module_list dst ~equal:String.equal
+    then
+      MyDigraph.add_edge_e ctx.module_call_graph @@ MyDigraph.E.create modname label dst
   in
   List.iter func_by_modules ~f:(fun set ->
       let x = get_module @@ Set.choose_exn set in
-      if (not @@ String.equal modname x) && List.mem ctx.module_list x ~equal:String.equal
-      then
-        MyDigraph.add_edge_e ctx.module_call_graph
-        @@ MyDigraph.E.create modname (Set.length set) x)
+      add_edge x (Set.length set));
+  Set.iter (get_module_set modname) ~f:(fun x ->
+      if not @@ MyDigraph.mem_edge ctx.module_call_graph modname x then add_edge x 0)
 ;;
 
 module Printer = Graph.Graphviz.Dot (struct
@@ -139,22 +149,6 @@ let get_module_metrics_result () =
       x, Delayed_result (Hashtbl.find_exn cur_metrics_refs x))
 ;;
 
-let calc_ca modname =
-  MyDigraph.fold_pred_e
-    (fun edge acc -> acc + MyDigraph.E.label edge)
-    ctx.module_call_graph
-    modname
-    0
-;;
-
-let calc_ce modname =
-  MyDigraph.fold_succ_e
-    (fun edge acc -> acc + MyDigraph.E.label edge)
-    ctx.module_call_graph
-    modname
-    0
-;;
-
 let collect_delayed_metrics () =
   List.iter ctx.module_list ~f:add_out_edges;
   List.iter ctx.module_list ~f:(fun modname ->
@@ -162,13 +156,9 @@ let collect_delayed_metrics () =
       let get_ref = Hashtbl.find_exn cur_metrics_refs in
       let fan_out_ref = get_ref fan_out in
       let fan_in_ref = get_ref fan_in in
-      let ca_ref = get_ref ca in
-      let ce_ref = get_ref ce in
       fan_out_ref
         := Some (Int_result (MyDigraph.out_degree ctx.module_call_graph modname));
-      fan_in_ref := Some (Int_result (MyDigraph.in_degree ctx.module_call_graph modname));
-      ca_ref := Some (Int_result (calc_ca modname));
-      ce_ref := Some (Int_result (calc_ce modname)))
+      fan_in_ref := Some (Int_result (MyDigraph.in_degree ctx.module_call_graph modname)))
 ;;
 
 let before_function (func_info : function_info) =
@@ -178,7 +168,7 @@ let before_function (func_info : function_info) =
 
 let get_function_extra_info () = []
 let get_function_metrics_result () = []
-let get_id_list modname = Set.to_list @@ get_paths modname
+let get_id_list modname = Set.to_list @@ get_function_set modname
 let get_module_extra_info () = "Paths in module:" :: get_id_list (cur_module ())
 
 let run _ _ fallback =
@@ -194,9 +184,7 @@ let run _ _ fallback =
           expr.exp_loc
           ~on_error:(fun _desc () -> ())
           expr
-          (fun path_name () ->
-            (*print_endline @@ path_name ^ " " ^ (short_location_str expr.exp_loc);*)
-            add_id (cur_module ()) path_name)
+          (fun path_name () -> add_function (cur_module ()) path_name)
           ();
         fallback.expr self expr)
   ; pat =
@@ -219,5 +207,17 @@ let run _ _ fallback =
         in
         parse_pat pat;
         fallback.pat self pat)
+  ; module_expr =
+      (fun self mod_expr ->
+        let open Tast_pattern in
+        let pat = map1 (tmod_ident __) ~f:path_name in
+        Tast_pattern.parse
+          pat
+          mod_expr.mod_loc
+          ~on_error:(fun _desc () -> ())
+          mod_expr
+          (fun modname () -> add_module (cur_module ()) modname)
+          ();
+        fallback.module_expr self mod_expr)
   }
 ;;

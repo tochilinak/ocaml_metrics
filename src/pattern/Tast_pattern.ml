@@ -741,6 +741,16 @@ let rld_overriden (T flident) (T fexpr) =
       | _ -> fail loc "rld_overriden")
 ;;
 
+let tmod_ident (T fpath) =
+  T
+    (fun ctx loc e k ->
+      match e.mod_desc with
+      | Tmod_ident (x, _) ->
+        ctx.matched <- ctx.matched + 1;
+        k |> fpath ctx loc x
+      | _ -> fail loc "tmod_ident")
+;;
+
 (*   let hack0 (T path0) =
     T
       (fun ctx loc x k ->
