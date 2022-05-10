@@ -55,7 +55,17 @@ let before_function (func_info : function_info) =
         MyGraph.add_vertex ctx.graph name_string)
 ;;
 
-module Printer = Graph.Graphviz.Dot (Dot_info (MyDigraph))
+module Printer = Graph.Graphviz.Dot (struct
+  include MyDigraph
+
+  let graph_attributes _ = []
+  let default_vertex_attributes _ = []
+  let vertex_attributes _ = []
+  let get_subgraph _ = None
+  let default_edge_attributes _ = []
+  let edge_attributes _ = []
+  let vertex_name vertex = "\"" ^ vertex ^ "\""
+end)
 
 let get_module_extra_info () =
   let ctx = get_ctx () in

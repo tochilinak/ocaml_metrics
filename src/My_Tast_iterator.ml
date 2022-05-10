@@ -149,7 +149,6 @@ let my_module_binding info self mb =
   match mb.mb_id with
   | None -> default_iterator.module_binding self mb
   | Some x ->
-    let old_cur_module = info.cur_module in
     info.module_binding_name <- info.cur_module ^ "." ^ Ident.name x;
     info.inside_module_binding <- true;
     default_iterator.module_binding self mb

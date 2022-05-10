@@ -99,23 +99,30 @@ let get_paths modname =
 ;;
 
 let add_out_edges modname =
-  let modules =
-    Set.filter_map
-      (module String)
-      (get_paths modname)
-      ~f:(fun x ->
-        let name = fst @@ String.rsplit2_exn x ~on:'.' in
-        if (not (String.equal modname name))
-           && List.mem ctx.module_list name ~equal:String.equal
-        then Some name
-        else None)
+  let get_module func = fst @@ String.rsplit2_exn func ~on:'.' in
+  let func_by_modules =
+    Set.group_by (get_paths modname) ~equiv:(fun x y ->
+        String.equal (get_module x) (get_module y))
   in
-  (*print_endline @@ "\n____" ^ modname ^ "____";
-  Set.iter modules ~f:print_endline;*)
-  Set.iter modules ~f:(fun x -> MyDigraph.add_edge ctx.module_call_graph modname x)
+  List.iter func_by_modules ~f:(fun set ->
+      let x = get_module @@ Set.choose_exn set in
+      if (not @@ String.equal modname x) && List.mem ctx.module_list x ~equal:String.equal
+      then
+        MyDigraph.add_edge_e ctx.module_call_graph
+        @@ MyDigraph.E.create modname (Set.length set) x)
 ;;
 
-module Printer = Graph.Graphviz.Dot (Dot_info (MyDigraph))
+module Printer = Graph.Graphviz.Dot (struct
+  include MyDigraph
+
+  let graph_attributes _ = []
+  let default_vertex_attributes _ = []
+  let vertex_attributes _ = []
+  let get_subgraph _ = None
+  let default_edge_attributes _ = []
+  let edge_attributes edge = [ `Label (Format.sprintf "%d" @@ E.label edge) ]
+  let vertex_name vertex = "\"" ^ vertex ^ "\""
+end)
 
 let get_project_extra_info () =
   [ "Coupling graph:"; Format.asprintf "%a\n" Printer.fprint_graph ctx.module_call_graph ]
