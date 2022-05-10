@@ -70,12 +70,12 @@ Metrics names are printed in the following format: `[metrics group id]_[metrics 
                 <b align="center">Coupling metrics</b><br />
             </td>
             <td align="center">FAN-IN</td>
-            <td align="left">Number of modules that call a given module</td>
+            <td align="left">Number of modules that depend on given module </td>
         </tr>
         <tr>
             <td  align="center">FAN-OUT</td>
             <td>
-                Numbers of modules that are called by a given module
+                Numbers of modules that the given module depends on
             </td>
         </tr>
         <tr>
