@@ -17,7 +17,9 @@ module MyDigraph =
 let metrics_group_id = "coupling"
 let fan_out = "FAN-OUT"
 let fan_in = "FAN-IN"
-let metrics_names = [ fan_out; fan_in ]
+let ca = "CA"
+let ce = "CE"
+let metrics_names = [ fan_out; fan_in; ca; ce ]
 
 type context =
   { module_stack : string Stack.t
@@ -137,6 +139,22 @@ let get_module_metrics_result () =
       x, Delayed_result (Hashtbl.find_exn cur_metrics_refs x))
 ;;
 
+let calc_ca modname =
+  MyDigraph.fold_pred_e
+    (fun edge acc -> acc + MyDigraph.E.label edge)
+    ctx.module_call_graph
+    modname
+    0
+;;
+
+let calc_ce modname =
+  MyDigraph.fold_succ_e
+    (fun edge acc -> acc + MyDigraph.E.label edge)
+    ctx.module_call_graph
+    modname
+    0
+;;
+
 let collect_delayed_metrics () =
   List.iter ctx.module_list ~f:add_out_edges;
   List.iter ctx.module_list ~f:(fun modname ->
@@ -144,9 +162,13 @@ let collect_delayed_metrics () =
       let get_ref = Hashtbl.find_exn cur_metrics_refs in
       let fan_out_ref = get_ref fan_out in
       let fan_in_ref = get_ref fan_in in
+      let ca_ref = get_ref ca in
+      let ce_ref = get_ref ce in
       fan_out_ref
         := Some (Int_result (MyDigraph.out_degree ctx.module_call_graph modname));
-      fan_in_ref := Some (Int_result (MyDigraph.in_degree ctx.module_call_graph modname)))
+      fan_in_ref := Some (Int_result (MyDigraph.in_degree ctx.module_call_graph modname));
+      ca_ref := Some (Int_result (calc_ca modname));
+      ce_ref := Some (Int_result (calc_ce modname)))
 ;;
 
 let before_function (func_info : function_info) =
