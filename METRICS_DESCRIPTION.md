@@ -65,8 +65,8 @@ Metrics names are printed in the following format: `[metrics group id]_[metrics 
             </td>
         </tr>
         <tr>
-            <td rowspan=2 align="center">coupling</td>
-            <td rowspan=2 align="left">
+            <td rowspan=3 align="center">coupling</td>
+            <td rowspan=3 align="left">
                 <b align="center">Coupling metrics</b><br />
             </td>
             <td align="center">FAN-IN</td>
@@ -76,6 +76,22 @@ Metrics names are printed in the following format: `[metrics group id]_[metrics 
             <td  align="center">FAN-OUT</td>
             <td>
                 Numbers of modules that the given module depends on
+            </td>
+        </tr>
+        <tr>
+            <td  align="center">APIU</td>
+            <td>
+                API Function Usage Index.<br />
+                Suppose that module
+                <img src="https://render.githubusercontent.com/render/math?math=m">
+                has
+                <img src="https://render.githubusercontent.com/render/math?math=n">
+                defined functions,
+                in project <img src="https://render.githubusercontent.com/render/math?math=k">
+                other modules <img src="https://render.githubusercontent.com/render/math?math=m_1, \ldots, m_k">
+                call one or more function from <img src="https://render.githubusercontent.com/render/math?math=m">.<br />
+                <img src="https://render.githubusercontent.com/render/math?math=\mathrm{APIU} = \frac{\sum_{j=1}^k n_j}{nk}">
+                or 0 if <img src="https://render.githubusercontent.com/render/math?math=nk = 0">
             </td>
         </tr>
         <tr>
