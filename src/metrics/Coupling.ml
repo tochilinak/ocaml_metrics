@@ -17,13 +17,16 @@ module MyDigraph =
 let metrics_group_id = "coupling"
 let fan_out = "FAN-OUT"
 let fan_in = "FAN-IN"
-let metrics_names = [ fan_out; fan_in ]
+let apiu = "APIU"
+let metrics_names = [ fan_out; fan_in; apiu ]
 
 type context =
   { module_stack : string Stack.t
   ; mutable module_list : string list
   ; module_of_ident : string Ident_Hashtbl.t
-  ; functions_in_module : (string, (string, String.comparator_witness) Set.t) Hashtbl.t
+  ; called_functions_in_module :
+      (string, (string, String.comparator_witness) Set.t) Hashtbl.t
+  ; num_of_struct_func : (string, int) Hashtbl.t
   ; modules_in_module : (string, (string, String.comparator_witness) Set.t) Hashtbl.t
   ; metrics_refs : (string, (string, metric_result option ref) Hashtbl.t) Hashtbl.t
   ; mutable filename : string
@@ -47,7 +50,8 @@ let ctx =
   { module_stack = Stack.create ()
   ; module_list = []
   ; module_of_ident = Ident_Hashtbl.create 10
-  ; functions_in_module = Hashtbl.create (module String)
+  ; called_functions_in_module = Hashtbl.create (module String)
+  ; num_of_struct_func = Hashtbl.create (module String)
   ; modules_in_module = Hashtbl.create (module String)
   ; metrics_refs = Hashtbl.create (module String)
   ; filename = ""
@@ -64,7 +68,7 @@ let add_id table modname id =
       | Some set -> Set.add set id)
 ;;
 
-let add_function = add_id ctx.functions_in_module
+let add_function = add_id ctx.called_functions_in_module
 let add_module = add_id ctx.modules_in_module
 
 let rec path_name path =
@@ -102,7 +106,7 @@ let get_paths table modname =
   | Some x -> x
 ;;
 
-let get_function_set = get_paths ctx.functions_in_module
+let get_function_set = get_paths ctx.called_functions_in_module
 let get_module_set = get_paths ctx.modules_in_module
 
 let add_out_edges modname =
@@ -149,6 +153,23 @@ let get_module_metrics_result () =
       x, Delayed_result (Hashtbl.find_exn cur_metrics_refs x))
 ;;
 
+let calc_apiu modname =
+  let sum, num =
+    MyDigraph.fold_pred_e
+      (fun edge (s, n) ->
+        if MyDigraph.E.label edge > 0 then s + MyDigraph.E.label edge, n + 1 else s, n)
+      ctx.module_call_graph
+      modname
+      (0, 0)
+  in
+  let func_num =
+    match Hashtbl.find ctx.num_of_struct_func modname with
+    | None -> 0
+    | Some x -> x
+  in
+  if num == 0 then 0. else float_of_int sum /. (float_of_int @@ (num * func_num))
+;;
+
 let collect_delayed_metrics () =
   List.iter ctx.module_list ~f:add_out_edges;
   List.iter ctx.module_list ~f:(fun modname ->
@@ -156,12 +177,20 @@ let collect_delayed_metrics () =
       let get_ref = Hashtbl.find_exn cur_metrics_refs in
       let fan_out_ref = get_ref fan_out in
       let fan_in_ref = get_ref fan_in in
+      let apiu_ref = get_ref apiu in
       fan_out_ref
         := Some (Int_result (MyDigraph.out_degree ctx.module_call_graph modname));
-      fan_in_ref := Some (Int_result (MyDigraph.in_degree ctx.module_call_graph modname)))
+      fan_in_ref := Some (Int_result (MyDigraph.in_degree ctx.module_call_graph modname));
+      apiu_ref := Some (Float_result (calc_apiu modname)))
 ;;
 
 let before_function (func_info : function_info) =
+  let add_struct_func modname =
+    Hashtbl.update ctx.num_of_struct_func modname ~f:(function
+        | None -> 1
+        | Some x -> x + 1)
+  in
+  add_struct_func (cur_module ());
   List.iter func_info.name.name_ident_list ~f:(fun x ->
       Ident_Hashtbl.add ctx.module_of_ident x (cur_module ()))
 ;;
