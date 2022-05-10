@@ -113,21 +113,24 @@ let my_structure_item info self str_item =
 
 let my_module_expr info self mod_expr =
   let get_module_name { mod_desc; mod_loc; _ } =
-    match mod_desc with
-    | Tmod_structure _ ->
-      if info.inside_module_binding
-      then (
+    if mod_loc.loc_ghost
+    then None
+    else (
+      match mod_desc with
+      | Tmod_structure _ ->
+        if info.inside_module_binding
+        then (
+          info.inside_module_binding <- false;
+          Some info.cur_module)
+        else
+          Some
+            (info.cur_module
+            ^ Format.sprintf ".<module at %s>"
+            @@ short_location_str mod_loc)
+      | Tmod_functor _ | Tmod_constraint _ -> None
+      | _ ->
         info.inside_module_binding <- false;
-        Some info.cur_module)
-      else
-        Some
-          (info.cur_module
-          ^ Format.sprintf ".<module at %s>"
-          @@ short_location_str mod_loc)
-    | Tmod_functor _ | Tmod_constraint _ -> None
-    | _ ->
-      info.inside_module_binding <- false;
-      None
+        None)
   in
   match get_module_name mod_expr with
   | Some x ->
