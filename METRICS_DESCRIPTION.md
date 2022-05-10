@@ -65,6 +65,20 @@ Metrics names are printed in the following format: `[metrics group id]_[metrics 
             </td>
         </tr>
         <tr>
+            <td rowspan=2 align="center">coupling</td>
+            <td rowspan=2 align="left">
+                <b align="center">Coupling metrics</b><br />
+            </td>
+            <td align="center">FAN-IN</td>
+            <td align="left">Number of modules that call a given module</td>
+        </tr>
+        <tr>
+            <td  align="center">FAN-OUT</td>
+            <td>
+                Numbers of modules that are called by a given module
+            </td>
+        </tr>
+        <tr>
             <td rowspan=3  align="center">CC-based</td>
             <td rowspan=3>
                 <b>McCabe's cyclomatic complexity based</b><br />
