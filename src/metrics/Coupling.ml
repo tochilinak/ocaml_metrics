@@ -3,7 +3,16 @@ module Format = Caml.Format
 open Zanuda_core
 open Zanuda_core.Utils
 module Ident_Hashtbl = Caml.Hashtbl.Make (Ident.T)
-module MyDigraph = Graph.Imperative.Digraph.Concrete (String)
+
+module MyDigraph =
+  Graph.Imperative.Digraph.ConcreteLabeled
+    (String)
+    (struct
+      type t = int
+
+      let compare = Int.compare
+      let default = 0
+    end)
 
 let metrics_group_id = "coupling"
 let fan_out = "FAN-OUT"

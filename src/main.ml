@@ -51,6 +51,7 @@ let typed_on_structure info modname file_content typedtree =
     ; verbose_metrics = !verbose_metrics
     ; cur_module = modname
     ; inside_module_binding = false
+    ; module_binding_name = ""
     ; in_root_structure = true
     }
   in

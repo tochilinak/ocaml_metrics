@@ -12,6 +12,7 @@ type iterator_params =
   ; verbose_metrics : string list
   ; mutable cur_module : string
   ; mutable inside_module_binding : bool (* default: false *)
+  ; mutable module_binding_name : string (* default: "" *)
   ; mutable in_root_structure : bool (* default: true *)
   }
 
@@ -121,7 +122,7 @@ let my_module_expr info self mod_expr =
         if info.inside_module_binding
         then (
           info.inside_module_binding <- false;
-          Some info.cur_module)
+          Some info.module_binding_name)
         else
           Some
             (info.cur_module
@@ -149,10 +150,9 @@ let my_module_binding info self mb =
   | None -> default_iterator.module_binding self mb
   | Some x ->
     let old_cur_module = info.cur_module in
-    info.cur_module <- info.cur_module ^ "." ^ Ident.name x;
+    info.module_binding_name <- info.cur_module ^ "." ^ Ident.name x;
     info.inside_module_binding <- true;
-    default_iterator.module_binding self mb;
-    info.cur_module <- old_cur_module
+    default_iterator.module_binding self mb
 ;;
 
 let my_structure info self str =
