@@ -151,10 +151,27 @@ let typed_on_structure info modname file_content typedtree =
   in
   build_iterator
     ~f:(fun o -> o.Tast_iterator.structure o)
-    ~compose:(fun run ->
-        run info file_content)
+    ~compose:(fun run -> run info file_content)
     ~init:(my_iterator iter_info)
     cmt_run_list
+    typedtree
+;;
+
+let typed_on_signature info modname file_content typedtree =
+  let open Compile_common in
+  let open My_Tast_iterator in
+  let filename = cut_build_dir info.source_file in
+  let iter_info =
+    make_iterator_context
+      ~filename
+      ~cur_module:modname
+      ~actions:(build_cmt_iterator_actions cmti_iter_action_list)
+  in
+  build_iterator
+    ~f:(fun o -> o.Tast_iterator.signature o)
+    ~compose:(fun run -> run info file_content)
+    ~init:(my_iterator iter_info)
+    cmti_run_list
     typedtree
 ;;
 
@@ -184,6 +201,22 @@ let process_cmt_typedtree filename dune_modname typedtree =
   with_info filename (fun info -> typed_on_structure info modname file_content typedtree)
 ;;
 
+let process_cmti_typedtree filename dune_modname typedtree =
+  if Config.verbose () then printfn "Analyzing file: %s" filename;
+  (*Format.printf "Typedtree ML:\n%a\n%!" Printtyped.interface typedtree;*)
+  let cut_filename = cut_build_dir filename in
+  let modname =
+    let str = String.substr_replace_all dune_modname ~pattern:"__" ~with_:"." in
+    if String.is_prefix str ~prefix:"Dune.exe"
+    then (
+      let dir = Filename.dirname cut_filename in
+      String.substr_replace_first str ~pattern:"Dune.exe" ~with_:(dir ^ "|Dune__exe"))
+    else str
+  in
+  let file_content = List.to_array @@ ("" :: Stdio.In_channel.read_lines cut_filename) in
+  with_info filename (fun info -> typed_on_signature info modname file_content typedtree)
+;;
+
 let () =
   Config.parse_args ();
   change_metrics_lists (Config.verbose_list ()) (Config.metrics_list ());
@@ -191,7 +224,7 @@ let () =
     match Config.mode () with
     | Config.Unspecified -> ()
     | Dir path ->
-      LoadDune.analyze_dir ~cmt:process_cmt_typedtree ~cmti:(fun _ _ _ -> ()) path;
+      LoadDune.analyze_dir ~cmt:process_cmt_typedtree ~cmti:process_cmti_typedtree path;
       List.iter collect_delayed_metrics_list ~f:(fun f -> f ());
       List.iter get_project_extra_info_list ~f:(fun (group_id, f) ->
           if List.mem !verbose_metrics group_id ~equal:String.equal

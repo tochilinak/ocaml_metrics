@@ -121,6 +121,10 @@ let my_structure ctx self str =
   else default_iterator.structure self str
 ;;
 
+(*let my_module_declaration ctx self mod_decl =
+  let old_module = ctx.cur_module in
+  ctx.cur_module <- ctx.cur_module ^ "." ^ ()*)
+
 let my_iterator ctx =
   CollectedMetrics.add_file ctx.filename;
   let open Typedtree in

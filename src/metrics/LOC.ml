@@ -118,7 +118,7 @@ let run ctx _ file_content fallback =
         ctx.last_structure_item <- false;
         fallback.value_binding self vb;
         ctx.last_structure_item <- is_child_of_str_item;
-        if is_child_of_str_item && (not loc.loc_ghost)
+        if is_child_of_str_item && not loc.loc_ghost
         then (
           let s, e = get_lines loc in
           remove_comment_lines processed_file_content (s, e);

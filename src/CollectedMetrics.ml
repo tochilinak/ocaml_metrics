@@ -107,8 +107,8 @@ module Printer = struct
         assert (not is_rec);
         print_metric ~is_rec:true width metric_id y
       | None ->
-          Format.eprintf "metric %s wasn't calculated\n" metric_id;
-          assert false)
+        Format.eprintf "metric %s wasn't calculated\n" metric_id;
+        assert false)
   ;;
 
   let default_find dict key =
