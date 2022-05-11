@@ -2,6 +2,7 @@ open Caml
 open Base
 open Zanuda_core
 open Utils
+open METRIC
 
 let groups_of_metrics =
   let open Metrics in
@@ -35,9 +36,107 @@ let change_metrics_lists new_verb_metrics new_metrics_to_show =
   change metrics_to_show new_metrics_to_show
 ;;
 
+let collect_results ~metrics_group_id ~work_results ~add_result ~add_extra_info =
+  let results, extra_info = work_results in
+  if List.mem !verbose_metrics metrics_group_id ~equal:String.equal
+  then add_extra_info extra_info;
+  List.iter results ~f:(fun (str, value) ->
+      let cur_metrics = metrics_group_id ^ "_" ^ str in
+      if List.exists !metrics_to_show ~f:(fun x ->
+             String.is_substring cur_metrics ~substring:x)
+      then add_result cur_metrics value)
+;;
+
+let collect_function_results func_info (metrics_group_id, work_results) =
+  let func_name = func_info.name.name_string in
+  collect_results
+    ~metrics_group_id
+    ~work_results
+    ~add_result:
+      (CollectedMetrics.add_func_result func_info.filename func_info.in_module func_name)
+    ~add_extra_info:
+      (CollectedMetrics.add_extra_info_func
+         func_info.filename
+         func_info.in_module
+         func_name)
+;;
+
+let collect_module_results mod_info (metrics_group_id, work_results) =
+  collect_results
+    ~metrics_group_id
+    ~work_results
+    ~add_result:(CollectedMetrics.add_module_result mod_info.filename mod_info.mod_name)
+    ~add_extra_info:
+      (CollectedMetrics.add_extra_info_module mod_info.filename mod_info.mod_name)
+;;
+
 let build_iterator ~init ~compose ~f xs =
   let o = List.fold_left ~f:(fun acc lint -> compose lint acc) ~init xs in
   f o
+;;
+
+let build_cmt_iterator_actions =
+  build_iterator
+    ~init:(METRIC.default_iterator_actions [])
+    ~compose:(fun (group_id, metrics_group_it) acc ->
+      { acc with
+        end_of_function =
+          (fun info ->
+            (group_id, metrics_group_it.end_of_function info) :: acc.end_of_function info)
+      ; end_of_module =
+          (fun info ->
+            (group_id, metrics_group_it.end_of_module info) :: acc.end_of_module info)
+      ; begin_of_module =
+          (fun info ->
+            metrics_group_it.begin_of_module info;
+            acc.begin_of_module info)
+      ; begin_of_function =
+          (fun info ->
+            metrics_group_it.begin_of_function info;
+            acc.begin_of_function info)
+      })
+    ~f:(fun iter_actions ->
+      { (METRIC.default_iterator_actions ()) with
+        end_of_function =
+          (fun info ->
+            List.iter
+              (iter_actions.end_of_function info)
+              ~f:(collect_function_results info))
+      ; end_of_module =
+          (fun info ->
+            List.iter (iter_actions.end_of_module info) ~f:(collect_module_results info))
+      ; begin_of_module =
+          (fun info ->
+            CollectedMetrics.add_module info.filename info.mod_name;
+            iter_actions.begin_of_module info)
+      ; begin_of_function =
+          (fun info ->
+            CollectedMetrics.add_function
+              info.filename
+              info.in_module
+              info.name.name_string;
+            iter_actions.begin_of_function info)
+      })
+;;
+
+let ( cmt_iter_action_list
+    , cmti_iter_action_list
+    , cmt_run_list
+    , cmti_run_list
+    , collect_delayed_metrics_list
+    , get_project_extra_info_list )
+  =
+  List.fold
+    groups_of_metrics
+    ~init:([], [], [], [], [], [])
+    ~f:(fun (l1, l2, l3, l4, l5, l6) (module L : METRIC.GROUP) ->
+      let cur_cmt, cur_cmti = L.get_iterators () in
+      ( (L.metrics_group_id, cur_cmt.actions) :: l1
+      , (L.metrics_group_id, cur_cmti.actions) :: l2
+      , cur_cmt.run :: l3
+      , cur_cmti.run :: l4
+      , cur_cmt.collect_delayed_metrics :: l5
+      , (L.metrics_group_id, cur_cmt.get_project_extra_info) :: l6 ))
 ;;
 
 let typed_on_structure info modname file_content typedtree =
@@ -45,21 +144,17 @@ let typed_on_structure info modname file_content typedtree =
   let open My_Tast_iterator in
   let filename = cut_build_dir info.source_file in
   let iter_info =
-    { filename
-    ; groups_of_metrics
-    ; metrics_to_show = !metrics_to_show
-    ; verbose_metrics = !verbose_metrics
-    ; cur_module = modname
-    ; inside_module_binding = false
-    ; module_binding_name = ""
-    ; in_root_structure = true
-    }
+    make_iterator_context
+      ~filename
+      ~cur_module:modname
+      ~actions:(build_cmt_iterator_actions cmt_iter_action_list)
   in
   build_iterator
     ~f:(fun o -> o.Tast_iterator.structure o)
-    ~compose:(fun (module L : METRIC.GROUP) -> L.run info file_content)
+    ~compose:(fun run ->
+        run info file_content)
     ~init:(my_iterator iter_info)
-    groups_of_metrics
+    cmt_run_list
     typedtree
 ;;
 
@@ -97,10 +192,10 @@ let () =
     | Config.Unspecified -> ()
     | Dir path ->
       LoadDune.analyze_dir ~cmt:process_cmt_typedtree ~cmti:(fun _ _ _ -> ()) path;
-      List.iter groups_of_metrics ~f:(fun (module L : METRIC.GROUP) ->
-          L.collect_delayed_metrics ();
-          if List.mem !verbose_metrics L.metrics_group_id ~equal:String.equal
-          then CollectedMetrics.add_extra_info_project (L.get_project_extra_info ()));
+      List.iter collect_delayed_metrics_list ~f:(fun f -> f ());
+      List.iter get_project_extra_info_list ~f:(fun (group_id, f) ->
+          if List.mem !verbose_metrics group_id ~equal:String.equal
+          then CollectedMetrics.add_extra_info_project (f ()));
       CollectedMetrics.Printer.report (Config.verbose ()) ()
   in
   ()

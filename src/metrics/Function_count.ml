@@ -2,30 +2,26 @@ open Base
 module Format = Caml.Format
 open Zanuda_core
 open Zanuda_core.Utils
+open Zanuda_core.METRIC
 
 type context =
   { mutable result : int
   ; notes : string Queue.t
   }
 
-let ctx = { result = 0; notes = Queue.create () }
+let default_ctx () = { result = 0; notes = Queue.create () }
 let metrics_group_id = "(test)"
-let before_function _ = ()
-let get_function_metrics_result () = []
-let get_function_extra_info () = []
-let get_module_extra_info () = Queue.to_list ctx.notes
-let collect_delayed_metrics () = ()
-let get_project_extra_info () = []
+let get_module_extra_info ctx () = Queue.to_list ctx.notes
 
-let before_module _ =
+let before_module ctx _ =
   ctx.result <- 0;
   Queue.clear ctx.notes
 ;;
 
-let update () = ctx.result <- ctx.result + 1
-let get_module_metrics_result () = [ "func-count", Int_result ctx.result ]
+let update ctx () = ctx.result <- ctx.result + 1
+let get_module_metrics_result ctx () = [ "func-count", Int_result ctx.result ]
 
-let run _ _ fallback =
+let run ctx _ _ fallback =
   let pat =
     let open Tast_pattern in
     texp_function (first_case (case pat_type drop exp_type))
@@ -42,7 +38,7 @@ let run _ _ fallback =
           ~on_error:(fun _desc () -> ())
           expr
           (fun x y () ->
-            update ();
+            update ctx ();
             let type_str =
               Format.asprintf
                 "(<from> %a) -> (<to> %a)"
@@ -63,4 +59,21 @@ let run _ _ fallback =
           ();
         fallback.expr self expr)
   }
+;;
+
+let get_iterators () =
+  let ctx = default_ctx () in
+  let cmt_iterator =
+    { actions =
+        { (default_iterator_actions ([], [])) with
+          begin_of_module = before_module ctx
+        ; end_of_module =
+            (fun _ -> get_module_metrics_result ctx (), get_module_extra_info ctx ())
+        }
+    ; run = run ctx
+    ; collect_delayed_metrics = (fun () -> ())
+    ; get_project_extra_info = (fun () -> [])
+    }
+  in
+  cmt_iterator, default_group_iterator
 ;;

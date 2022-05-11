@@ -2,6 +2,7 @@ open Base
 module Format = Caml.Format
 open Zanuda_core
 open Zanuda_core.Utils
+open Zanuda_core.METRIC
 
 type context =
   { mutable res_simple : int
@@ -11,19 +12,13 @@ type context =
   ; mutable is_rec : bool
   }
 
-let ctx : context =
+let default_ctx () =
   { res_simple = 0; res_rec = 0; res_mod = 0; cur_value_binding = None; is_rec = false }
 ;;
 
 let metrics_group_id = "CC-based"
-let before_module _ = ()
-let get_function_extra_info () = []
-let get_module_metrics_result () = []
-let get_module_extra_info () = []
-let collect_delayed_metrics () = ()
-let get_project_extra_info () = []
 
-let before_function (func_info : function_info) =
+let before_function ctx (func_info : function_info) =
   ctx.res_simple <- 1;
   ctx.res_rec <- 1;
   ctx.res_mod <- 1;
@@ -31,7 +26,7 @@ let before_function (func_info : function_info) =
   ctx.is_rec <- func_info.is_rec
 ;;
 
-let get_function_metrics_result () =
+let get_function_metrics_result ctx () =
   [ "CC-ord", Int_result ctx.res_simple
   ; "CC-rec", Int_result ctx.res_rec
   ; "CC-mod", Int_result ctx.res_mod
@@ -86,21 +81,21 @@ let count_add pat expr =
     ()
 ;;
 
-let count_rec expr =
+let count_rec ctx expr =
   let open Typedtree in
   match expr.exp_desc, ctx.cur_value_binding with
   | Texp_ident (Pident x, _, _), Some y when Ident.T.equal x y -> 1
   | _ -> 0
 ;;
 
-let run _ _ fallback =
+let run ctx _ _ fallback =
   let open Tast_iterator in
   let open Typedtree in
   { fallback with
     expr =
       (fun self expr ->
         let add_ord = count_add pat_ord expr in
-        let rec_add = if ctx.is_rec then count_rec expr else 0 in
+        let rec_add = if ctx.is_rec then count_rec ctx expr else 0 in
         ctx.res_simple <- ctx.res_simple + add_ord;
         ctx.res_rec <- ctx.res_rec + add_ord + rec_add;
         ctx.res_mod <- ctx.res_mod + count_add pat_mod expr;
@@ -112,4 +107,20 @@ let run _ _ fallback =
         fallback.value_binding self vb;
         ctx.cur_value_binding <- old_vb_name)
   }
+;;
+
+let get_iterators () =
+  let ctx = default_ctx () in
+  let cmt_iterator =
+    { actions =
+        { (default_iterator_actions ([], [])) with
+          begin_of_function = before_function ctx
+        ; end_of_function = (fun _ -> get_function_metrics_result ctx (), [])
+        }
+    ; run = run ctx
+    ; collect_delayed_metrics = (fun () -> ())
+    ; get_project_extra_info = (fun () -> [])
+    }
+  in
+  cmt_iterator, default_group_iterator
 ;;

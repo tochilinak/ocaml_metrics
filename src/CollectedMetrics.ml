@@ -1,6 +1,7 @@
 open Base
 open Caml.Format
 open Utils
+open METRIC
 
 module Item = struct
   type t =
@@ -105,7 +106,9 @@ module Printer = struct
       | Some y ->
         assert (not is_rec);
         print_metric ~is_rec:true width metric_id y
-      | None -> assert false)
+      | None ->
+          Format.eprintf "metric %s wasn't calculated\n" metric_id;
+          assert false)
   ;;
 
   let default_find dict key =

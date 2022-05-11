@@ -96,24 +96,6 @@ let rec_flag_to_bool rec_flag =
   | Recursive -> true
 ;;
 
-type function_name =
-  { name_ident_list : Ident.t list
-  ; name_string : string
-  }
-
-type function_info =
-  { is_rec : bool
-  ; name : function_name
-  ; block : function_name list
-  ; ind_inside_block : int
-  }
-
-type module_info =
-  { mod_name : string
-  ; filename : string
-  ; is_anonymous : bool
-  }
-
 let range from till =
   Sequence.unfold ~init:from ~f:(function
       | x when x > till -> None
@@ -143,8 +125,3 @@ let get_vb_name_string vb =
   | [] -> None
   | x -> Some (String.concat ~sep:"," (List.map x ~f:Ident.name))
 ;;
-
-type metric_result =
-  | Int_result of int
-  | Float_result of float
-  | Delayed_result of metric_result option ref

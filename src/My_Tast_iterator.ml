@@ -2,74 +2,27 @@ open Caml
 open Base
 open Zanuda_core
 open Utils
+open METRIC
 open Tast_iterator
 open Typedtree
 
-type iterator_params =
+type iterator_context =
   { filename : string
-  ; groups_of_metrics : (module METRIC.GROUP) list
-  ; metrics_to_show : string list
-  ; verbose_metrics : string list
   ; mutable cur_module : string
+  ; actions : unit METRIC.iterator_actions
   ; mutable inside_module_binding : bool (* default: false *)
   ; mutable module_binding_name : string (* default: "" *)
   ; mutable in_root_structure : bool (* default: true *)
   }
 
-let before_function info func_info =
-  List.iter info.groups_of_metrics ~f:(fun (module L : METRIC.GROUP) ->
-      L.before_function func_info)
-;;
-
-let before_module info mod_info =
-  List.iter info.groups_of_metrics ~f:(fun (module L : METRIC.GROUP) ->
-      L.before_module mod_info)
-;;
-
-let collect_results
-    info
-    ~metrics_group_id
-    ~get_result
-    ~get_extra_info
-    ~add_result
-    ~add_extra_info
-  =
-  if List.mem info.verbose_metrics metrics_group_id ~equal:String.equal
-  then add_extra_info (get_extra_info ());
-  List.iter (get_result ()) ~f:(fun (str, value) ->
-      let cur_metrics = metrics_group_id ^ "_" ^ str in
-      if List.exists info.metrics_to_show ~f:(fun x ->
-             String.is_substring cur_metrics ~substring:x)
-      then add_result cur_metrics value)
-;;
-
-let collect_function_results info func_name (module L : METRIC.GROUP) =
-  collect_results
-    info
-    ~metrics_group_id:L.metrics_group_id
-    ~get_result:L.get_function_metrics_result
-    ~get_extra_info:L.get_function_extra_info
-    ~add_result:(CollectedMetrics.add_func_result info.filename info.cur_module func_name)
-    ~add_extra_info:
-      (CollectedMetrics.add_extra_info_func info.filename info.cur_module func_name)
-;;
-
-let collect_module_results info (module L : METRIC.GROUP) =
-  collect_results
-    info
-    ~metrics_group_id:L.metrics_group_id
-    ~get_result:L.get_module_metrics_result
-    ~get_extra_info:L.get_module_extra_info
-    ~add_result:(CollectedMetrics.add_module_result info.filename info.cur_module)
-    ~add_extra_info:(CollectedMetrics.add_extra_info_module info.filename info.cur_module)
-;;
-
-let collect_function_metrics info func_name =
-  List.iter info.groups_of_metrics ~f:(collect_function_results info func_name)
-;;
-
-let collect_module_metrics info =
-  List.iter info.groups_of_metrics ~f:(collect_module_results info)
+let make_iterator_context ~filename ~cur_module ~actions =
+  { filename
+  ; cur_module
+  ; actions
+  ; inside_module_binding = false
+  ; module_binding_name = ""
+  ; in_root_structure = true
+  }
 ;;
 
 let get_value_name vb =
@@ -79,15 +32,13 @@ let get_value_name vb =
   | None -> Format.sprintf "<Value on %s>" loc
 ;;
 
-let function_value_binding info func_info self x =
-  let value_name = func_info.name.name_string in
-  CollectedMetrics.add_function info.filename info.cur_module value_name;
-  before_function info func_info;
+let function_value_binding ctx func_info self x =
+  ctx.actions.begin_of_function func_info;
   self.value_binding self x;
-  collect_function_metrics info value_name
+  ctx.actions.end_of_function func_info
 ;;
 
-let my_value_bindings info rec_flag self list =
+let my_value_bindings ctx rec_flag self list =
   let get_name vb =
     { name_ident_list = get_vb_name_list vb; name_string = get_value_name vb }
   in
@@ -101,82 +52,82 @@ let my_value_bindings info rec_flag self list =
           ; name = get_name x
           ; block
           ; ind_inside_block = i
+          ; filename = ctx.filename
+          ; in_module = ctx.cur_module
           }
         in
-        function_value_binding info func_info self x))
+        function_value_binding ctx func_info self x))
 ;;
 
-let my_structure_item info self str_item =
+let my_structure_item ctx self str_item =
   match str_item.str_desc with
-  | Tstr_value (rec_flag, list) -> my_value_bindings info rec_flag self list
+  | Tstr_value (rec_flag, list) -> my_value_bindings ctx rec_flag self list
   | _ -> default_iterator.structure_item self str_item
 ;;
 
-let my_module_expr info self mod_expr =
+let my_module_expr ctx self mod_expr =
   let get_module_name { mod_desc; mod_loc; _ } =
     if mod_loc.loc_ghost
     then None
     else (
       match mod_desc with
       | Tmod_structure _ ->
-        if info.inside_module_binding
+        if ctx.inside_module_binding
         then (
-          info.inside_module_binding <- false;
-          Some (info.module_binding_name, false))
+          ctx.inside_module_binding <- false;
+          Some (ctx.module_binding_name, false))
         else
           Some
-            ( info.cur_module
+            ( ctx.cur_module
               ^ Format.sprintf ".<module at %s>"
               @@ short_location_str mod_loc
             , true )
       | Tmod_functor _ | Tmod_constraint _ -> None
       | _ ->
-        info.inside_module_binding <- false;
+        ctx.inside_module_binding <- false;
         None)
   in
   match get_module_name mod_expr with
   | Some (x, is_anonymous) ->
-    let old_modname = info.cur_module in
-    info.cur_module <- x;
-    CollectedMetrics.add_module info.filename info.cur_module;
-    before_module
-      info
-      { mod_name = info.cur_module; filename = info.filename; is_anonymous };
+    let old_modname = ctx.cur_module in
+    ctx.cur_module <- x;
+    let mod_info = { mod_name = ctx.cur_module; filename = ctx.filename; is_anonymous } in
+    ctx.actions.begin_of_module mod_info;
     default_iterator.module_expr self mod_expr;
-    collect_module_metrics info;
-    info.cur_module <- old_modname
+    ctx.actions.end_of_module mod_info;
+    ctx.cur_module <- old_modname
   | None -> default_iterator.module_expr self mod_expr
 ;;
 
-let my_module_binding info self mb =
+let my_module_binding ctx self mb =
   match mb.mb_id with
   | None -> default_iterator.module_binding self mb
   | Some x ->
-    info.module_binding_name <- info.cur_module ^ "." ^ Ident.name x;
-    info.inside_module_binding <- true;
+    ctx.module_binding_name <- ctx.cur_module ^ "." ^ Ident.name x;
+    ctx.inside_module_binding <- true;
     default_iterator.module_binding self mb
 ;;
 
-let my_structure info self str =
-  let is_root = info.in_root_structure in
-  info.in_root_structure <- false;
-  if is_root
+let my_structure ctx self str =
+  if ctx.in_root_structure
   then (
-    CollectedMetrics.add_module info.filename info.cur_module;
-    before_module
-      info
-      { mod_name = info.cur_module; filename = info.filename; is_anonymous = false });
-  default_iterator.structure self str;
-  if is_root then collect_module_metrics info
+    ctx.in_root_structure <- false;
+    let mod_info =
+      { mod_name = ctx.cur_module; filename = ctx.filename; is_anonymous = false }
+    in
+    ctx.actions.begin_of_module mod_info;
+    default_iterator.structure self str;
+    ctx.actions.end_of_module mod_info)
+  else default_iterator.structure self str
 ;;
 
-let my_iterator info =
-  CollectedMetrics.add_file info.filename;
+let my_iterator ctx =
+  CollectedMetrics.add_file ctx.filename;
   let open Typedtree in
   { default_iterator with
-    structure = my_structure info
-  ; structure_item = my_structure_item info
-  ; module_binding = my_module_binding info
-  ; module_expr = my_module_expr info
+    structure = my_structure ctx
+  ; structure_item = my_structure_item ctx
+  ; module_binding = my_module_binding ctx
+  ; module_expr = my_module_expr ctx
   }
 ;;

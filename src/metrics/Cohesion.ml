@@ -2,9 +2,12 @@ open Base
 module Format = Caml.Format
 open Zanuda_core
 open Zanuda_core.Utils
+open Zanuda_core.METRIC
 module MyGraph = Graph.Imperative.Graph.Concrete (String)
 module MyDigraph = Graph.Imperative.Digraph.Concrete (String)
 module Hashtbl = Caml.Hashtbl.Make (Ident.T)
+
+let metrics_group_id = "cohesion"
 
 type context =
   { mutable num_of_methods : int
@@ -16,9 +19,9 @@ type context =
   ; graph : MyGraph.t
   }
 
-let contexts = Stack.create ()
+let get_ctx contexts = Stack.top_exn contexts
 
-let before_module _ =
+let before_module contexts _ =
   Stack.push
     contexts
     { num_of_methods = 0
@@ -31,15 +34,8 @@ let before_module _ =
     }
 ;;
 
-let get_ctx () = Stack.top_exn contexts
-let metrics_group_id = "cohesion"
-let get_function_metrics_result () = []
-let get_function_extra_info () = []
-let collect_delayed_metrics () = ()
-let get_project_extra_info () = []
-
-let before_function (func_info : function_info) =
-  let ctx = get_ctx () in
+let before_function contexts (func_info : function_info) =
+  let ctx = get_ctx contexts in
   ctx.cur_function <- func_info.name.name_string;
   let outside_block = ctx.num_of_methods - func_info.ind_inside_block in
   let inside_block = if func_info.is_rec then List.length func_info.block else 0 in
@@ -67,16 +63,16 @@ module Printer = Graph.Graphviz.Dot (struct
   let vertex_name vertex = "\"" ^ vertex ^ "\""
 end)
 
-let get_module_extra_info () =
-  let ctx = get_ctx () in
+let get_module_extra_info contexts () =
+  let ctx = get_ctx contexts in
   [ Format.sprintf "Maximum possible arcs: %d" ctx.possible_arcs
   ; "COHESION GRAPH:"
   ; Format.asprintf "%a\n" Printer.fprint_graph ctx.digraph
   ]
 ;;
 
-let calc_lcom1 () =
-  let ctx = get_ctx () in
+let calc_lcom1 contexts () =
+  let ctx = get_ctx contexts in
   let int_of_bool b = if b then 1 else 0 in
   let func_list = MyDigraph.fold_vertex (fun v acc -> v :: acc) ctx.digraph [] in
   let ind_func_list = List.zip_exn (List.mapi func_list ~f:(fun i _ -> i)) func_list in
@@ -102,9 +98,9 @@ let calc_lcom1 () =
 
 module Components = Graph.Components.Undirected (MyGraph)
 
-let calc_result () =
-  let ctx = get_ctx () in
-  let lcom1 = calc_lcom1 () in
+let calc_result contexts () =
+  let ctx = get_ctx contexts in
+  let lcom1 = calc_lcom1 contexts () in
   let lcom2 =
     max 0 @@ ((2 * lcom1) - (ctx.num_of_methods * (ctx.num_of_methods - 1) / 2))
   in
@@ -125,19 +121,19 @@ let calc_result () =
   ]
 ;;
 
-let get_module_metrics_result () =
-  let result = calc_result () in
+let get_module_metrics_result contexts () =
+  let result = calc_result contexts () in
   let _ = Stack.pop_exn contexts in
   result
 ;;
 
-let run _ _ fallback =
+let run contexts _ _ fallback =
   let open Tast_iterator in
   let open Typedtree in
   { fallback with
     expr =
       (fun self expr ->
-        let ctx = get_ctx () in
+        let ctx = get_ctx contexts in
         let look_for_edge cur_func =
           let pat =
             let open Tast_pattern in
@@ -166,4 +162,23 @@ let run _ _ fallback =
         if not @@ String.equal ctx.cur_function "" then look_for_edge ctx.cur_function;
         fallback.expr self expr)
   }
+;;
+
+let get_iterators () =
+  let contexts : context Stack.t = Stack.create () in
+  let cmt_iterator =
+    { run = run contexts
+    ; actions =
+        { (default_iterator_actions ([], [])) with
+          begin_of_function = before_function contexts
+        ; begin_of_module = before_module contexts
+        ; end_of_module =
+            (fun _ ->
+              get_module_metrics_result contexts (), get_module_extra_info contexts ())
+        }
+    ; collect_delayed_metrics = (fun _ -> ())
+    ; get_project_extra_info = (fun _ -> [])
+    }
+  in
+  cmt_iterator, default_group_iterator
 ;;

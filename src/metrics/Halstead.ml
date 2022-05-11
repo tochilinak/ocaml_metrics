@@ -2,6 +2,7 @@ open Base
 module Format = Caml.Format
 open Zanuda_core
 open Zanuda_core.Utils
+open Zanuda_core.METRIC
 
 type context =
   { operand_dictionary : (string, int) Hashtbl.t
@@ -9,7 +10,7 @@ type context =
   ; mutable last_apply : bool
   }
 
-let ctx =
+let default_ctx () =
   { operand_dictionary = Hashtbl.create (module String)
   ; operator_dictionary = Hashtbl.create (module String)
   ; last_apply = false
@@ -17,13 +18,8 @@ let ctx =
 ;;
 
 let metrics_group_id = "Halstead"
-let before_module _ = ()
-let get_module_metrics_result () = []
-let get_module_extra_info () = []
-let collect_delayed_metrics () = ()
-let get_project_extra_info () = []
 
-let before_function _ =
+let before_function ctx _ =
   Hashtbl.clear ctx.operand_dictionary;
   Hashtbl.clear ctx.operator_dictionary;
   ctx.last_apply <- false
@@ -52,7 +48,7 @@ let change_name : (string, string) Hashtbl.t =
     ]
 ;;
 
-let add_operator x =
+let add_operator ctx x =
   if List.mem not_operator x ~equal:String.equal
   then ()
   else (
@@ -64,22 +60,22 @@ let add_operator x =
     add_to_dict ctx.operator_dictionary name)
 ;;
 
-let add_operand = add_to_dict ctx.operand_dictionary
+let add_operand ctx = add_to_dict ctx.operand_dictionary
 
 let calc_total_sum dict =
   Hashtbl.fold dict ~init:0 ~f:(fun ~key:_ ~data acc -> acc + data)
 ;;
 
-let calc_total_operators () = calc_total_sum ctx.operator_dictionary
-let calc_total_operands () = calc_total_sum ctx.operand_dictionary
-let calc_dist_operators () = Hashtbl.length ctx.operator_dictionary
-let calc_dist_operands () = Hashtbl.length ctx.operand_dictionary
+let calc_total_operators ctx () = calc_total_sum ctx.operator_dictionary
+let calc_total_operands ctx () = calc_total_sum ctx.operand_dictionary
+let calc_dist_operators ctx () = Hashtbl.length ctx.operator_dictionary
+let calc_dist_operands ctx () = Hashtbl.length ctx.operand_dictionary
 
-let get_function_metrics_result () =
-  let dist_operators = calc_dist_operators () in
-  let dist_operands = calc_dist_operands () in
-  let total_operators = calc_total_operators () in
-  let total_operands = calc_total_operands () in
+let get_function_metrics_result ctx () =
+  let dist_operators = calc_dist_operators ctx () in
+  let dist_operands = calc_dist_operands ctx () in
+  let total_operators = calc_total_operators ctx () in
+  let total_operands = calc_total_operands ctx () in
   let f = float_of_int in
   let dist_sum = f dist_operators +. f dist_operands in
   let total_sum = f total_operators +. f total_operands in
@@ -98,7 +94,7 @@ let get_function_metrics_result () =
   ]
 ;;
 
-let get_function_extra_info () =
+let get_function_extra_info ctx () =
   let get_str_list dict =
     Hashtbl.fold dict ~init:[] ~f:(fun ~key ~data acc ->
         Format.sprintf "< %s > used %d times" key data :: acc)
@@ -118,22 +114,22 @@ let atom_pat_expr =
   ||| texp_field drop @@ label_desc (map1 __ ~f:(fun x -> "field " ^ x))
 ;;
 
-let process_not_atom_expr expr =
+let process_not_atom_expr ctx expr =
   let open Typedtree in
   let get_name = function
     | Texp_construct (_, x, _) -> "construct " ^ x.cstr_name
     | _ -> Names.texp_name expr
   in
-  add_operator @@ get_name expr
+  add_operator ctx @@ get_name expr
 ;;
 
-let process_not_atom_operand_expr expr =
+let process_not_atom_operand_expr ctx expr =
   let open Typedtree in
   let open Asttypes in
   match expr.exp_desc with
-  | Texp_setfield (_, _, x, _) -> add_operand @@ "field " ^ x.lbl_name
+  | Texp_setfield (_, _, x, _) -> add_operand ctx @@ "field " ^ x.lbl_name
   | Texp_record { fields } ->
-    Array.iter fields ~f:(fun (x, _) -> add_operand @@ "field " ^ x.lbl_name)
+    Array.iter fields ~f:(fun (x, _) -> add_operand ctx @@ "field " ^ x.lbl_name)
   (*| Texp_function { arg_label } ->
     (match arg_label with
     | Labelled s | Optional s -> add_operand @@ "label " ^ s
@@ -148,22 +144,22 @@ let process_not_atom_operand_expr expr =
   | _ -> ()
 ;;
 
-let process_expression expr =
+let process_expression ctx expr =
   let open Typedtree in
   let loc = expr.exp_loc in
   Tast_pattern.parse
     atom_pat_expr
     loc
     ~on_error:(fun _desc () ->
-      process_not_atom_operand_expr expr;
+      process_not_atom_operand_expr ctx expr;
       match expr.exp_desc with
       | Texp_apply _ -> ctx.last_apply <- true
       | x ->
         ctx.last_apply <- false;
-        process_not_atom_expr x)
+        process_not_atom_expr ctx x)
     expr
     (fun id () ->
-      if ctx.last_apply then add_operator id else add_operand id;
+      if ctx.last_apply then add_operator ctx id else add_operand ctx id;
       ctx.last_apply <- List.mem apply_operator id ~equal:String.equal)
     ()
 ;;
@@ -178,20 +174,20 @@ let atom_pat_value =
   ||| tpat_alias @@ map1 __ ~f:(fun x -> "id " ^ x)
 ;;
 
-let process_not_atom_value pat =
+let process_not_atom_value ctx pat =
   let open Typedtree in
   let get_name = function
     | Tpat_construct (_, x, _) -> "construct " ^ x.cstr_name
     | _ -> Names.tpat_name pat
   in
-  add_operator @@ get_name pat
+  add_operator ctx @@ get_name pat
 ;;
 
-let process_not_atom_operand_value pat =
+let process_not_atom_operand_value ctx pat =
   let open Typedtree in
   match pat.pat_desc with
   | Tpat_record (fields, _) ->
-    List.iter fields ~f:(fun (_, x, _) -> add_operand @@ "field " ^ x.lbl_name)
+    List.iter fields ~f:(fun (_, x, _) -> add_operand ctx @@ "field " ^ x.lbl_name)
   | _ -> ()
 ;;
 
@@ -200,8 +196,8 @@ let atom_pat_comp =
   map0 (tpat_exception drop) ~f:"exception"
 ;;
 
-let process_pattern : type k. k Tast_pattern.gen_pat -> unit =
- fun pat ->
+let process_pattern : type k. context -> k Tast_pattern.gen_pat -> unit =
+ fun ctx pat ->
   let open Typedtree in
   match Tast_pattern.convert_gen_pat pat with
   | Value x ->
@@ -209,10 +205,10 @@ let process_pattern : type k. k Tast_pattern.gen_pat -> unit =
       atom_pat_value
       x.pat_loc
       ~on_error:(fun _desc () ->
-        process_not_atom_operand_value x;
-        process_not_atom_value x.pat_desc)
+        process_not_atom_operand_value ctx x;
+        process_not_atom_value ctx x.pat_desc)
       x
-      (fun id () -> add_operand id)
+      (fun id () -> add_operand ctx id)
       ()
   | Computation x ->
     Tast_pattern.parse
@@ -220,9 +216,9 @@ let process_pattern : type k. k Tast_pattern.gen_pat -> unit =
       x.pat_loc
       ~on_error:(fun _desc () -> ())
       x
-      (fun id () -> add_operator id)
+      (fun id () -> add_operator ctx id)
       ()
-  | Or_pattern -> add_operator "Tpat_or"
+  | Or_pattern -> add_operator ctx "Tpat_or"
 ;;
 
 let format_construct expr =
@@ -236,16 +232,33 @@ let format_construct expr =
   | _ -> false
 ;;
 
-let run _ _ fallback =
+let run ctx _ _ fallback =
   let open Tast_iterator in
   { fallback with
     expr =
       (fun self expr ->
-        if not (format_construct expr) then process_expression expr;
+        if not (format_construct expr) then process_expression ctx expr;
         fallback.expr self expr)
   ; pat =
       (fun self pat ->
-        process_pattern pat;
+        process_pattern ctx pat;
         fallback.pat self pat)
   }
+;;
+
+let get_iterators () =
+  let ctx = default_ctx () in
+  let cmt_iterator =
+    { actions =
+        { (default_iterator_actions ([], [])) with
+          begin_of_function = before_function ctx
+        ; end_of_function =
+            (fun _ -> get_function_metrics_result ctx (), get_function_extra_info ctx ())
+        }
+    ; run = run ctx
+    ; collect_delayed_metrics = (fun () -> ())
+    ; get_project_extra_info = (fun () -> [])
+    }
+  in
+  cmt_iterator, default_group_iterator
 ;;

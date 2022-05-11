@@ -2,6 +2,7 @@ open Base
 module Format = Caml.Format
 open Zanuda_core
 open Zanuda_core.Utils
+open Zanuda_core.METRIC
 
 type context =
   { mutable code_lines : int
@@ -9,21 +10,16 @@ type context =
   ; mutable last_structure_item : bool
   }
 
-let ctx = { code_lines = 0; all_lines = 0; last_structure_item = false }
+let default_ctx () = { code_lines = 0; all_lines = 0; last_structure_item = false }
 let metrics_group_id = "LOC-based"
-let get_module_metrics_result () = []
-let get_module_extra_info () = []
-let get_function_extra_info () = []
-let before_module _ = ctx.last_structure_item <- false
-let collect_delayed_metrics () = ()
-let get_project_extra_info () = []
+let before_module ctx _ = ctx.last_structure_item <- false
 
-let before_function _ =
+let before_function ctx _ =
   ctx.code_lines <- 0;
   ctx.all_lines <- 0
 ;;
 
-let get_function_metrics_result () =
+let get_function_metrics_result ctx () =
   [ "code", Int_result ctx.code_lines; "all", Int_result ctx.all_lines ]
 ;;
 
@@ -106,7 +102,7 @@ let process_pattern : type k. k Tast_pattern.gen_pat -> string array -> unit =
   | _ -> ()
 ;;
 
-let run _ file_content fallback =
+let run ctx _ file_content fallback =
   let processed_file_content = Array.copy file_content in
   let open Tast_iterator in
   { fallback with
@@ -122,7 +118,7 @@ let run _ file_content fallback =
         ctx.last_structure_item <- false;
         fallback.value_binding self vb;
         ctx.last_structure_item <- is_child_of_str_item;
-        if is_child_of_str_item
+        if is_child_of_str_item && (not loc.loc_ghost)
         then (
           let s, e = get_lines loc in
           remove_comment_lines processed_file_content (s, e);
@@ -143,4 +139,21 @@ let run _ file_content fallback =
         then process_pattern pat processed_file_content;
         fallback.pat self pat)
   }
+;;
+
+let get_iterators () =
+  let ctx = default_ctx () in
+  let cmt_iterator =
+    { actions =
+        { (default_iterator_actions ([], [])) with
+          begin_of_function = before_function ctx
+        ; begin_of_module = before_module ctx
+        ; end_of_function = (fun _ -> get_function_metrics_result ctx (), [])
+        }
+    ; run = run ctx
+    ; collect_delayed_metrics = (fun () -> ())
+    ; get_project_extra_info = (fun () -> [])
+    }
+  in
+  cmt_iterator, default_group_iterator
 ;;

@@ -2,6 +2,7 @@ open Base
 module Format = Caml.Format
 open Zanuda_core
 open Zanuda_core.Utils
+open Zanuda_core.METRIC
 module Ident_Hashtbl = Caml.Hashtbl.Make (Ident.T)
 
 module MyDigraph =
@@ -46,7 +47,7 @@ let create_metrics_refs () =
   | `Duplicate_keys _ -> failwith ""
 ;;
 
-let ctx =
+let default_ctx () =
   { module_stack = Stack.create ()
   ; module_list = []
   ; module_of_ident = Ident_Hashtbl.create 10
@@ -59,7 +60,7 @@ let ctx =
   }
 ;;
 
-let cur_module () = Stack.top_exn ctx.module_stack
+let cur_module ctx () = Stack.top_exn ctx.module_stack
 
 let add_id table modname id =
   Hashtbl.update table modname ~f:(fun v ->
@@ -68,10 +69,10 @@ let add_id table modname id =
       | Some set -> Set.add set id)
 ;;
 
-let add_function = add_id ctx.called_functions_in_module
-let add_module = add_id ctx.modules_in_module
+let add_function ctx = add_id ctx.called_functions_in_module
+let add_module ctx = add_id ctx.modules_in_module
 
-let rec path_name path =
+let rec path_name ctx path =
   let open Path in
   match path with
   | Pident id ->
@@ -83,17 +84,17 @@ let rec path_name path =
       else name)
     else (
       match Ident_Hashtbl.find_opt ctx.module_of_ident id with
-      | None -> cur_module () ^ "." ^ Ident.name id
+      | None -> cur_module ctx () ^ "." ^ Ident.name id
       | Some x -> x ^ "." ^ Ident.name id)
-  | Pdot (p, s) -> path_name p ^ "." ^ s
-  | Papply (p1, _p2) -> path_name p1
+  | Pdot (p, s) -> path_name ctx p ^ "." ^ s
+  | Papply (p1, _p2) -> path_name ctx p1
 ;;
 
-let before_module mod_info =
+let before_module ctx mod_info =
   let _ =
     Hashtbl.add_exn ctx.metrics_refs ~key:mod_info.mod_name ~data:(create_metrics_refs ())
   in
-  if mod_info.is_anonymous then add_module (cur_module ()) mod_info.mod_name;
+  if mod_info.is_anonymous then add_module ctx (cur_module ctx ()) mod_info.mod_name;
   ctx.module_list <- mod_info.mod_name :: ctx.module_list;
   ctx.filename <- mod_info.filename;
   MyDigraph.add_vertex ctx.module_call_graph mod_info.mod_name;
@@ -106,13 +107,13 @@ let get_paths table modname =
   | Some x -> x
 ;;
 
-let get_function_set = get_paths ctx.called_functions_in_module
-let get_module_set = get_paths ctx.modules_in_module
+let get_function_set ctx = get_paths ctx.called_functions_in_module
+let get_module_set ctx = get_paths ctx.modules_in_module
 
-let add_out_edges modname =
+let add_out_edges ctx modname =
   let get_module func = fst @@ String.rsplit2_exn func ~on:'.' in
   let func_by_modules =
-    Set.group_by (get_function_set modname) ~equiv:(fun x y ->
+    Set.group_by (get_function_set ctx modname) ~equiv:(fun x y ->
         String.equal (get_module x) (get_module y))
   in
   let add_edge dst label =
@@ -124,7 +125,7 @@ let add_out_edges modname =
   List.iter func_by_modules ~f:(fun set ->
       let x = get_module @@ Set.choose_exn set in
       add_edge x (Set.length set));
-  Set.iter (get_module_set modname) ~f:(fun x ->
+  Set.iter (get_module_set ctx modname) ~f:(fun x ->
       if not @@ MyDigraph.mem_edge ctx.module_call_graph modname x then add_edge x 0)
 ;;
 
@@ -140,20 +141,24 @@ module Printer = Graph.Graphviz.Dot (struct
   let vertex_name vertex = "\"" ^ vertex ^ "\""
 end)
 
-let get_project_extra_info () =
+let get_project_extra_info ctx () =
   [ "Coupling graph:"; Format.asprintf "%a\n" Printer.fprint_graph ctx.module_call_graph ]
 ;;
 
-let get_metrics_refs = Hashtbl.find_exn ctx.metrics_refs
+let get_metrics_refs ctx = Hashtbl.find_exn ctx.metrics_refs
 
-let get_module_metrics_result () =
-  let this_module = Stack.pop_exn ctx.module_stack in
-  let cur_metrics_refs = get_metrics_refs this_module in
+let exit_from_module ctx () =
+  let _ = Stack.pop_exn ctx.module_stack in
+  ()
+;;
+
+let get_module_metrics_result ctx () =
+  let cur_metrics_refs = get_metrics_refs ctx (cur_module ctx ()) in
   List.map metrics_names ~f:(fun x ->
       x, Delayed_result (Hashtbl.find_exn cur_metrics_refs x))
 ;;
 
-let calc_apiu modname =
+let calc_apiu ctx modname =
   let sum, num =
     MyDigraph.fold_pred_e
       (fun edge (s, n) ->
@@ -167,13 +172,15 @@ let calc_apiu modname =
     | None -> 0
     | Some x -> x
   in
-  if num == 0 then 0. else float_of_int sum /. (float_of_int @@ (num * func_num))
+  if num * func_num == 0
+  then 0.
+  else float_of_int sum /. (float_of_int @@ (num * func_num))
 ;;
 
-let collect_delayed_metrics () =
-  List.iter ctx.module_list ~f:add_out_edges;
+let collect_delayed_metrics ctx () =
+  List.iter ctx.module_list ~f:(add_out_edges ctx);
   List.iter ctx.module_list ~f:(fun modname ->
-      let cur_metrics_refs = get_metrics_refs modname in
+      let cur_metrics_refs = get_metrics_refs ctx modname in
       let get_ref = Hashtbl.find_exn cur_metrics_refs in
       let fan_out_ref = get_ref fan_out in
       let fan_in_ref = get_ref fan_in in
@@ -181,39 +188,40 @@ let collect_delayed_metrics () =
       fan_out_ref
         := Some (Int_result (MyDigraph.out_degree ctx.module_call_graph modname));
       fan_in_ref := Some (Int_result (MyDigraph.in_degree ctx.module_call_graph modname));
-      apiu_ref := Some (Float_result (calc_apiu modname)))
+      apiu_ref := Some (Float_result (calc_apiu ctx modname)))
 ;;
 
-let before_function (func_info : function_info) =
+let before_function ctx (func_info : function_info) =
   let add_struct_func modname =
     Hashtbl.update ctx.num_of_struct_func modname ~f:(function
         | None -> 1
         | Some x -> x + 1)
   in
-  add_struct_func (cur_module ());
+  add_struct_func (cur_module ctx ());
   List.iter func_info.name.name_ident_list ~f:(fun x ->
-      Ident_Hashtbl.add ctx.module_of_ident x (cur_module ()))
+      Ident_Hashtbl.add ctx.module_of_ident x (cur_module ctx ()))
 ;;
 
-let get_function_extra_info () = []
-let get_function_metrics_result () = []
-let get_id_list modname = Set.to_list @@ get_function_set modname
-let get_module_extra_info () = "Paths in module:" :: get_id_list (cur_module ())
+let get_id_list ctx modname = Set.to_list @@ get_function_set ctx modname
 
-let run _ _ fallback =
+let get_module_extra_info ctx () =
+  "Paths in module:" :: get_id_list ctx (cur_module ctx ())
+;;
+
+let run ctx _ _ fallback =
   let open Tast_iterator in
   let open Typedtree in
   { fallback with
     expr =
       (fun self expr ->
         let open Tast_pattern in
-        let pat = map1 (texp_ident __) ~f:path_name in
+        let pat = map1 (texp_ident __) ~f:(path_name ctx) in
         Tast_pattern.parse
           pat
           expr.exp_loc
           ~on_error:(fun _desc () -> ())
           expr
-          (fun path_name () -> add_function (cur_module ()) path_name)
+          (fun path_name () -> add_function ctx (cur_module ctx ()) path_name)
           ();
         fallback.expr self expr)
   ; pat =
@@ -230,7 +238,7 @@ let run _ _ fallback =
               ~on_error:(fun _desc () -> ())
               x
               (fun var_name () ->
-                Ident_Hashtbl.add ctx.module_of_ident var_name (cur_module ()))
+                Ident_Hashtbl.add ctx.module_of_ident var_name (cur_module ctx ()))
               ()
           | _ -> ()
         in
@@ -239,14 +247,36 @@ let run _ _ fallback =
   ; module_expr =
       (fun self mod_expr ->
         let open Tast_pattern in
-        let pat = map1 (tmod_ident __) ~f:path_name in
+        let pat = map1 (tmod_ident __) ~f:(path_name ctx) in
         Tast_pattern.parse
           pat
           mod_expr.mod_loc
           ~on_error:(fun _desc () -> ())
           mod_expr
-          (fun modname () -> add_module (cur_module ()) modname)
+          (fun modname () -> add_module ctx (cur_module ctx ()) modname)
           ();
         fallback.module_expr self mod_expr)
   }
+;;
+
+let get_iterators () =
+  let ctx = default_ctx () in
+  let cmt_iterator =
+    { actions =
+        { (default_iterator_actions ([], [])) with
+          begin_of_function = before_function ctx
+        ; begin_of_module = before_module ctx
+        ; end_of_module =
+            (fun _ ->
+              let result = get_module_metrics_result ctx () in
+              let extra_info = get_module_extra_info ctx () in
+              exit_from_module ctx ();
+              result, extra_info)
+        }
+    ; run = run ctx
+    ; collect_delayed_metrics = collect_delayed_metrics ctx
+    ; get_project_extra_info = get_project_extra_info ctx
+    }
+  in
+  cmt_iterator, default_group_iterator
 ;;
