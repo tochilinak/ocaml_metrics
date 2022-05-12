@@ -43,6 +43,8 @@ type context =
   ; called_items_from_function :
       (string, (string, String.comparator_witness) Set.t) Hashtbl.t
         (* key: modname.func_name; data: modname.func_name*)
+  ; refered_modules_in_module :
+      (string, (string, String.comparator_witness) Set.t) Hashtbl.t (* key: modname *)
   ; file_of_module : (string, string) Hashtbl.t (* filenames without extension *)
   ; mutable ml_files :
       (string, String.comparator_witness) Set.t (* filenames without extension *)
@@ -77,6 +79,7 @@ let default_ctx () =
   ; sig_functions_in_module = Hashtbl.create (module String)
   ; api_functions_in_module = Hashtbl.create (module String)
   ; called_items_from_function = Hashtbl.create (module String)
+  ; refered_modules_in_module = Hashtbl.create (module String)
   ; file_of_module = Hashtbl.create (module String)
   ; ml_files = Set.empty (module String)
   ; mli_files = Set.empty (module String)
@@ -219,7 +222,12 @@ let add_out_edges ctx modname =
                 { functions_used = functions_used + add
                 ; consider_in_apiu = consider_in_apiu && not is_non_api_call
                 })));
-  Hashtbl.iteri module_counter ~f:(fun ~key ~data -> add_edge key data)
+  Hashtbl.iteri module_counter ~f:(fun ~key ~data -> add_edge key data);
+  Set.iter (default_find ctx.refered_modules_in_module modname) ~f:(fun cur_mod ->
+    if MyDigraph.mem_vertex ctx.module_call_graph cur_mod
+       && not @@ MyDigraph.mem_edge ctx.module_call_graph modname cur_mod
+    then add_edge cur_mod Edge_label.default
+  )
 ;;
 
 let build_graph ctx () =
@@ -344,6 +352,18 @@ let run_cmt ctx _ _ fallback =
           in
           parse_pat pat);
         fallback.pat self pat)
+    ; module_expr =
+      (fun self mod_expr ->
+        let open Tast_pattern in
+        let pat = map1 (tmod_ident __) ~f:(path_name ctx) in
+        Tast_pattern.parse
+          pat
+          mod_expr.mod_loc
+          ~on_error:(fun _desc () -> ())
+          mod_expr
+          (fun modname () -> add_item ctx.refered_modules_in_module (cur_module ctx) modname)
+          ();
+        fallback.module_expr self mod_expr)
   }
 ;;
 
