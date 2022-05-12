@@ -121,9 +121,25 @@ let my_structure ctx self str =
   else default_iterator.structure self str
 ;;
 
-(*let my_module_declaration ctx self mod_decl =
-  let old_module = ctx.cur_module in
-  ctx.cur_module <- ctx.cur_module ^ "." ^ ()*)
+let my_module_declaration ctx self mod_decl =
+  match mod_decl.md_name.txt with
+  | None -> default_iterator.module_declaration self mod_decl
+  | Some modname ->
+    let old_module = ctx.cur_module in
+    let info = { mod_sig_name = ctx.cur_module } in
+    ctx.cur_module <- ctx.cur_module ^ "." ^ modname;
+    ctx.actions.begin_of_module_sig info;
+    default_iterator.module_declaration self mod_decl;
+    ctx.actions.end_of_module_sig info;
+    ctx.cur_module <- old_module
+;;
+
+let my_value_descroption ctx self val_desc =
+  let info = { fun_sig_name = val_desc.val_id } in
+  ctx.actions.begin_of_function_sig info;
+  default_iterator.value_description self val_desc;
+  ctx.actions.end_of_function_sig info
+;;
 
 let my_iterator ctx =
   let open Typedtree in
@@ -132,5 +148,7 @@ let my_iterator ctx =
   ; structure_item = my_structure_item ctx
   ; module_binding = my_module_binding ctx
   ; module_expr = my_module_expr ctx
+  ; module_declaration = my_module_declaration ctx
+  ; value_description = my_value_descroption ctx
   }
 ;;

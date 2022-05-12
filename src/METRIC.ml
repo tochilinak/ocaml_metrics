@@ -33,7 +33,9 @@ type 'result iterator_actions =
   ; begin_of_module : module_info -> unit
   ; end_of_module : module_info -> 'result
   ; begin_of_function_sig : function_sig_info -> unit
+  ; end_of_function_sig : function_sig_info -> unit
   ; begin_of_module_sig : module_sig_info -> unit
+  ; end_of_module_sig : module_sig_info -> unit
   }
 
 let default_iterator_actions : type k. k -> k iterator_actions =
@@ -43,7 +45,9 @@ let default_iterator_actions : type k. k -> k iterator_actions =
   ; begin_of_module = (fun _ -> ())
   ; end_of_module = (fun _ -> default_result)
   ; begin_of_function_sig = (fun _ -> ())
+  ; end_of_function_sig = (fun _ -> ())
   ; begin_of_module_sig = (fun _ -> ())
+  ; end_of_module_sig = (fun _ -> ())
   }
 ;;
 

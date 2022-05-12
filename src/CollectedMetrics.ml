@@ -235,6 +235,7 @@ module Printer = struct
     | Item.Library (x, _) -> Format.printf "LIBRARY %s\n" x
     | _ -> assert false);
     print_extra_info verbose section;
+    Format.printf "\n";
     List.iter filenames ~f:(print_file_info verbose)
   ;;
 
