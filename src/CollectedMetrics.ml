@@ -109,7 +109,7 @@ let add_extra_info where extra_info =
 
 let add_extra_info_module = f_on_module add_extra_info
 let add_extra_info_func = f_on_func add_extra_info
-let add_extra_info_section section = add_extra_info section
+let add_extra_info_project = add_extra_info Item.Root
 
 let print_extra_info verbose where =
   if verbose
@@ -231,11 +231,11 @@ let print_section_info verbose section =
   | Item.Executable (x, _) -> Format.printf "EXECUTABLE %s\n" x
   | Item.Library (x, _) -> Format.printf "LIBRARY %s\n" x
   | _ -> assert false);
-  print_extra_info verbose section;
   Format.printf "\n";
   List.iter filenames ~f:(print_file_info verbose)
 ;;
 
 let report verbose () =
+  print_extra_info verbose Item.Root;
   List.iter (default_find ctx.declarations Item.Root) ~f:(print_section_info verbose)
 ;;

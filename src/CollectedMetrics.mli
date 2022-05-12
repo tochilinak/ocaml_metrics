@@ -26,8 +26,8 @@ val add_module_result : string -> string -> string -> METRIC.metric_result -> un
 val add_func_result : string -> string -> string -> string -> METRIC.metric_result -> unit
 (* file -> modname -> function -> metric_id -> result -> unit *)
 
-val add_extra_info_section : Item.t -> string list -> unit
-(* (Item.Executable/Library) -> extra_info -> unit *)
+val add_extra_info_project : string list -> unit
+(* extra_info -> unit *)
 
 val add_extra_info_module : string -> string -> string list -> unit
 (* file -> modname -> extra_info -> unit *)

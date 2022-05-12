@@ -145,7 +145,13 @@ let build_cmti_iterator_actions =
     ~f:(fun x -> x)
 ;;
 
-let get_action_lists () =
+let ( cmt_iter_action_list
+    , cmti_iter_action_list
+    , cmt_run_list
+    , cmti_run_list
+    , collect_delayed_metrics_list
+    , get_project_extra_info_list )
+  =
   List.fold
     groups_of_metrics
     ~init:([], [], [], [], [], [])
@@ -159,28 +165,7 @@ let get_action_lists () =
       , (L.metrics_group_id, cur_cmt.get_project_extra_info) :: l6 ))
 ;;
 
-let ( cmt_iter_action_list
-    , cmti_iter_action_list
-    , cmt_run_list
-    , cmti_run_list
-    , collect_delayed_metrics_list
-    , get_project_extra_info_list )
-  =
-  let l1, l2, l3, l4, l5, l6 = get_action_lists () in
-  ref l1, ref l2, ref l3, ref l4, ref l5, ref l6
-;;
-
-let reset_action_lists () =
-  let l1, l2, l3, l4, l5, l6 = get_action_lists () in
-  cmt_iter_action_list := l1;
-  cmti_iter_action_list := l2;
-  cmt_run_list := l3;
-  cmti_run_list := l4;
-  collect_delayed_metrics_list := l5;
-  get_project_extra_info_list := l6
-;;
-
-let typed_on_structure info modname file_content typedtree =
+let typed_on_structure info exe_name modname file_content typedtree =
   let open Compile_common in
   let open My_Tast_iterator in
   let filename = cut_build_dir info.source_file in
@@ -188,17 +173,17 @@ let typed_on_structure info modname file_content typedtree =
     make_iterator_context
       ~filename
       ~cur_module:modname
-      ~actions:(build_cmt_iterator_actions !cmt_iter_action_list)
+      ~actions:(build_cmt_iterator_actions cmt_iter_action_list)
   in
   build_iterator
     ~f:(fun o -> o.Tast_iterator.structure o)
-    ~compose:(fun run -> run info file_content)
+    ~compose:(fun run -> run (info, exe_name) file_content)
     ~init:(my_iterator iter_info)
-    !cmt_run_list
+    cmt_run_list
     typedtree
 ;;
 
-let typed_on_signature info modname file_content typedtree =
+let typed_on_signature info exe_name modname file_content typedtree =
   let open Compile_common in
   let open My_Tast_iterator in
   let filename = cut_build_dir info.source_file in
@@ -206,13 +191,13 @@ let typed_on_signature info modname file_content typedtree =
     make_iterator_context
       ~filename
       ~cur_module:modname
-      ~actions:(build_cmti_iterator_actions !cmti_iter_action_list)
+      ~actions:(build_cmti_iterator_actions cmti_iter_action_list)
   in
   build_iterator
     ~f:(fun o -> o.Tast_iterator.signature o)
-    ~compose:(fun run -> run info file_content)
+    ~compose:(fun run -> run (info, exe_name) file_content)
     ~init:(my_iterator iter_info)
-    !cmti_run_list
+    cmti_run_list
     typedtree
 ;;
 
@@ -232,13 +217,32 @@ let get_cur_section () =
   | Some x -> x
 ;;
 
+let get_exe_name () =
+  match !cur_section with
+  | Some (Executable (x, id)) -> Some (Format.sprintf "%s/%d" x id)
+  | _ -> None
+;;
+
+let glob_modname modname =
+  match !cur_section with
+  | Some (Executable (x, id)) -> Format.sprintf "%s/%d" x id ^ "." ^ modname
+  | Some (Library (x, _id)) -> String.capitalize x ^ "." ^ modname
+  | _ -> assert false
+;;
+
 let process_cmt_typedtree filename modname typedtree =
   if Config.verbose () then printfn "Analyzing file: %s" filename;
   (*Format.printf "Typedtree ML:\n%a\n%!" Printtyped.implementation typedtree;*)
   let cut_filename = cut_build_dir filename in
   CollectedMetrics.add_file (get_cur_section ()) cut_filename;
   let file_content = List.to_array @@ ("" :: Stdio.In_channel.read_lines cut_filename) in
-  with_info filename (fun info -> typed_on_structure info modname file_content typedtree)
+  with_info filename (fun info ->
+      typed_on_structure
+        info
+        (get_exe_name ())
+        (glob_modname modname)
+        file_content
+        typedtree)
 ;;
 
 let process_cmti_typedtree filename modname typedtree =
@@ -246,29 +250,28 @@ let process_cmti_typedtree filename modname typedtree =
   (*Format.printf "Typedtree ML:\n%a\n%!" Printtyped.interface typedtree;*)
   let cut_filename = cut_build_dir filename in
   let file_content = List.to_array @@ ("" :: Stdio.In_channel.read_lines cut_filename) in
-  with_info filename (fun info -> typed_on_signature info modname file_content typedtree)
+  with_info filename (fun info ->
+      typed_on_signature
+        info
+        (get_exe_name ())
+        (glob_modname modname)
+        file_content
+        typedtree)
 ;;
 
-let finish_section () =
-  match !cur_section with
-  | None -> ()
-  | Some section ->
-    List.iter !collect_delayed_metrics_list ~f:(fun f -> f ());
-    List.iter !get_project_extra_info_list ~f:(fun (group_id, f) ->
-        if List.mem !verbose_metrics group_id ~equal:String.equal
-        then CollectedMetrics.add_extra_info_section section (f ()))
+let finish () =
+  List.iter collect_delayed_metrics_list ~f:(fun f -> f ());
+  List.iter get_project_extra_info_list ~f:(fun (group_id, f) ->
+      if List.mem !verbose_metrics group_id ~equal:String.equal
+      then CollectedMetrics.add_extra_info_project (f ()))
 ;;
 
 let process_new_executable exe_name =
-  finish_section ();
-  cur_section := Some (CollectedMetrics.add_executable exe_name);
-  reset_action_lists ()
+  cur_section := Some (CollectedMetrics.add_executable exe_name)
 ;;
 
 let process_new_library lib_name =
-  finish_section ();
-  cur_section := Some (CollectedMetrics.add_library lib_name);
-  reset_action_lists ()
+  cur_section := Some (CollectedMetrics.add_library lib_name)
 ;;
 
 let () =
@@ -284,7 +287,7 @@ let () =
         ~on_exe:process_new_executable
         ~on_lib:process_new_library
         path;
-      finish_section ();
+      finish ();
       CollectedMetrics.report (Config.verbose ()) ()
   in
   ()

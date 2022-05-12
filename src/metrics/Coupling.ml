@@ -24,7 +24,8 @@ let apiu = "APIU"
 let metrics_names = [ fan_out; fan_in; apiu ]
 
 type context =
-  { module_stack : string Stack.t
+  { mutable cur_executable : string option
+  ; module_stack : string Stack.t
   ; mutable cur_module_is_anonymous : bool
   ; mutable cur_function : string
   ; module_of_ident : string Ident_Hashtbl.t
@@ -69,7 +70,8 @@ let create_metrics_refs () =
 ;;
 
 let default_ctx () =
-  { module_stack = Stack.create ()
+  { cur_executable = None
+  ; module_stack = Stack.create ()
   ; cur_module_is_anonymous = false
   ; cur_function = ""
   ; module_of_ident = Ident_Hashtbl.create 10
@@ -97,8 +99,15 @@ let rec path_name ctx path =
     if Ident.global id
     then (
       let name = Ident.name id in
-      String.chop_prefix_if_exists ~prefix:"Dune__exe"
-      @@ String.chop_prefix_if_exists ~prefix:"Dune__exe." name)
+      if String.is_prefix ~prefix:"Dune__exe" name
+      then (
+        let exe_name =
+          match ctx.cur_executable with
+          | None -> assert false
+          | Some x -> x
+        in
+        exe_name ^ String.chop_prefix_exn ~prefix:"Dune__exe" name)
+      else name)
     else (
       match Ident_Hashtbl.find_opt ctx.module_of_ident id with
       | None -> cur_module ctx ^ "." ^ Ident.name id
@@ -224,10 +233,9 @@ let add_out_edges ctx modname =
                 })));
   Hashtbl.iteri module_counter ~f:(fun ~key ~data -> add_edge key data);
   Set.iter (default_find ctx.refered_modules_in_module modname) ~f:(fun cur_mod ->
-    if MyDigraph.mem_vertex ctx.module_call_graph cur_mod
-       && not @@ MyDigraph.mem_edge ctx.module_call_graph modname cur_mod
-    then add_edge cur_mod Edge_label.default
-  )
+      if MyDigraph.mem_vertex ctx.module_call_graph cur_mod
+         && (not @@ MyDigraph.mem_edge ctx.module_call_graph modname cur_mod)
+      then add_edge cur_mod Edge_label.default)
 ;;
 
 let build_graph ctx () =
@@ -280,9 +288,6 @@ let collect_delayed_metrics ctx () =
     ctx.module_call_graph
 ;;
 
-let get_module_extra_info _ctx () = []
-(*"Paths in module:" :: get_id_list ctx (cur_module ctx ())*)
-
 module Printer = Graph.Graphviz.Dot (struct
   include MyDigraph
 
@@ -299,6 +304,14 @@ module Printer = Graph.Graphviz.Dot (struct
   let vertex_name vertex = "\"" ^ vertex ^ "\""
 end)
 
+let get_function_extra_info ctx () =
+  "Called from function:"
+  :: (Set.to_list
+     @@ default_find
+          ctx.called_items_from_function
+          (cur_module ctx ^ "." ^ ctx.cur_function))
+;;
+
 let get_project_extra_info ctx () =
   [ "Coupling graph:"; Format.asprintf "%a\n" Printer.fprint_graph ctx.module_call_graph ]
 ;;
@@ -310,7 +323,8 @@ let get_project_extra_info ctx () =
         @ [ "\n" ]
         @ acc)*)
 
-let run_cmt ctx _ _ fallback =
+let run_cmt ctx (_, exe_name) _ fallback =
+  ctx.cur_executable <- exe_name;
   let open Tast_iterator in
   let open Typedtree in
   { fallback with
@@ -352,7 +366,7 @@ let run_cmt ctx _ _ fallback =
           in
           parse_pat pat);
         fallback.pat self pat)
-    ; module_expr =
+  ; module_expr =
       (fun self mod_expr ->
         let open Tast_pattern in
         let pat = map1 (tmod_ident __) ~f:(path_name ctx) in
@@ -361,7 +375,8 @@ let run_cmt ctx _ _ fallback =
           mod_expr.mod_loc
           ~on_error:(fun _desc () -> ())
           mod_expr
-          (fun modname () -> add_item ctx.refered_modules_in_module (cur_module ctx) modname)
+          (fun modname () ->
+            add_item ctx.refered_modules_in_module (cur_module ctx) modname)
           ();
         fallback.module_expr self mod_expr)
   }
@@ -375,15 +390,15 @@ let get_iterators () =
           begin_of_function = begin_of_cmt_function ctx
         ; end_of_function =
             (fun _ ->
+              let extra_info = get_function_extra_info ctx () in
               end_of_function ctx ();
-              [], [])
+              [], extra_info)
         ; begin_of_module = begin_of_cmt_module ctx
         ; end_of_module =
             (fun _ ->
               let result_refs = get_module_metrics_result_refs ctx () in
-              let extra_info = get_module_extra_info ctx () in
               exit_from_module ctx ();
-              result_refs, extra_info)
+              result_refs, [])
         }
     ; run = run_cmt ctx
     ; collect_delayed_metrics = collect_delayed_metrics ctx

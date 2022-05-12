@@ -58,7 +58,7 @@ let default_iterator_actions : type k. k -> k iterator_actions =
 type 'result metrics_group_iterator =
   { actions : 'result iterator_actions
   ; run :
-      Compile_common.info
+      Compile_common.info * string option
       -> string array (* file content *)
       -> Tast_iterator.iterator
       -> Tast_iterator.iterator
