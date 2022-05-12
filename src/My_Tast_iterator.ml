@@ -60,9 +60,11 @@ let my_value_bindings ctx rec_flag self list =
 ;;
 
 let my_structure_item ctx self str_item =
-  match str_item.str_desc with
-  | Tstr_value (rec_flag, list) -> my_value_bindings ctx rec_flag self list
-  | _ -> default_iterator.structure_item self str_item
+  if not str_item.str_loc.loc_ghost
+  then (
+    match str_item.str_desc with
+    | Tstr_value (rec_flag, list) -> my_value_bindings ctx rec_flag self list
+    | _ -> default_iterator.structure_item self str_item)
 ;;
 
 let my_module_expr ctx self mod_expr =

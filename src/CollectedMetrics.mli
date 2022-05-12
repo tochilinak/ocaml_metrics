@@ -35,7 +35,5 @@ val add_extra_info_module : string -> string -> string list -> unit
 val add_extra_info_func : string -> string -> string -> string list -> unit
 (* file -> modname -> filename -> extra_info -> unit *)
 
-module Printer : sig
-  val report : bool -> unit -> unit
-  (* is_verbose -> unit -> unit *)
-end
+val report : bool -> unit -> unit
+(* is_verbose -> unit -> unit *)

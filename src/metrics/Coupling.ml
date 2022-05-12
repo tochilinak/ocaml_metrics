@@ -5,15 +5,17 @@ open Zanuda_core.Utils
 open Zanuda_core.METRIC
 module Ident_Hashtbl = Caml.Hashtbl.Make (Ident.T)
 
-module MyDigraph =
-  Graph.Imperative.Digraph.ConcreteLabeled
-    (String)
-    (struct
-      type t = int
+module Edge_label = struct
+  type t =
+    { functions_used : int
+    ; consider_in_apiu : bool
+    }
 
-      let compare = Int.compare
-      let default = 0
-    end)
+  let compare e1 e2 = Int.compare e1.functions_used e2.functions_used
+  let default = { functions_used = 0; consider_in_apiu = false }
+end
+
+module MyDigraph = Graph.Imperative.Digraph.ConcreteLabeled (String) (Edge_label)
 
 let metrics_group_id = "coupling"
 let fan_out = "FAN-OUT"
@@ -192,25 +194,32 @@ let add_out_edges ctx modname =
            || (not @@ MyDigraph.mem_vertex ctx.module_call_graph mod_of_func)
         then acc
         else if not @@ Set.mem (default_find ctx.api_functions_in_module mod_of_func) func
-        then (
-          Format.eprintf
-            "Warning: calling non-api function %s in module %s. Coupling metrics might \
-             be calculated incorrectly\n"
-            func_with_path
-            modname;
-          acc)
-        else mod_of_func :: acc)
+        then (* non-api function call *)
+          (mod_of_func, func, true) :: acc
+        else (mod_of_func, func, false) :: acc)
+  in
+  let module_function_set : (string, (string, String.comparator_witness) Set.t) Hashtbl.t =
+    Hashtbl.create (module String)
+  in
+  let module_counter : (string, Edge_label.t) Hashtbl.t =
+    Hashtbl.create (module String)
   in
   Set.iter (default_find ctx.struct_functions_in_module modname) ~f:(fun func ->
       let func_with_mod = modname ^ "." ^ func in
       let calls = default_find ctx.called_items_from_function func_with_mod in
       let module_list = calls_to_module_list calls in
-      let module_counter = Hashtbl.create (module String) in
-      List.iter module_list ~f:(fun cur_mod ->
+      List.iter module_list ~f:(fun (cur_mod, cur_func, is_non_api_call) ->
+          let add =
+            if Set.mem (default_find module_function_set cur_mod) cur_func then 0 else 1
+          in
+          add_item module_function_set cur_mod cur_func;
           Hashtbl.update module_counter cur_mod ~f:(function
-              | None -> 1
-              | Some x -> x + 1));
-      Hashtbl.iteri module_counter ~f:(fun ~key ~data -> add_edge key data))
+              | None -> { functions_used = 1; consider_in_apiu = not is_non_api_call }
+              | Some { Edge_label.functions_used; consider_in_apiu } ->
+                { functions_used = functions_used + add
+                ; consider_in_apiu = consider_in_apiu && not is_non_api_call
+                })));
+  Hashtbl.iteri module_counter ~f:(fun ~key ~data -> add_edge key data)
 ;;
 
 let build_graph ctx () =
@@ -234,7 +243,9 @@ let calc_apiu ctx modname =
   let sum, num =
     MyDigraph.fold_pred_e
       (fun edge (s, n) ->
-        if MyDigraph.E.label edge > 0 then s + MyDigraph.E.label edge, n + 1 else s, n)
+        if (MyDigraph.E.label edge).consider_in_apiu
+        then s + (MyDigraph.E.label edge).Edge_label.functions_used, n + 1
+        else s, n)
       ctx.module_call_graph
       modname
       (0, 0)
@@ -261,10 +272,8 @@ let collect_delayed_metrics ctx () =
     ctx.module_call_graph
 ;;
 
-(*let get_module_extra_info ctx () =
-  "Paths in module:" :: get_id_list ctx (cur_module ctx ())
-;;
-*)
+let get_module_extra_info _ctx () = []
+(*"Paths in module:" :: get_id_list ctx (cur_module ctx ())*)
 
 module Printer = Graph.Graphviz.Dot (struct
   include MyDigraph
@@ -274,19 +283,24 @@ module Printer = Graph.Graphviz.Dot (struct
   let vertex_attributes _ = []
   let get_subgraph _ = None
   let default_edge_attributes _ = []
-  let edge_attributes edge = [ `Label (Format.sprintf "%d" @@ E.label edge) ]
+
+  let edge_attributes edge =
+    [ `Label (Format.sprintf "%d" @@ (E.label edge).functions_used) ]
+  ;;
+
   let vertex_name vertex = "\"" ^ vertex ^ "\""
 end)
 
 let get_project_extra_info ctx () =
   [ "Coupling graph:"; Format.asprintf "%a\n" Printer.fprint_graph ctx.module_call_graph ]
-  @ [ "API functions:" ]
+;;
+
+(*@ [ "API functions:" ]
   @ Hashtbl.fold ctx.api_functions_in_module ~init:[] ~f:(fun ~key ~data acc ->
         (Format.sprintf "Module %s" key
         :: Set.fold data ~init:[] ~f:(fun acc x -> x :: acc))
         @ [ "\n" ]
-        @ acc)
-;;
+        @ acc)*)
 
 let run_cmt ctx _ _ fallback =
   let open Tast_iterator in
@@ -347,7 +361,7 @@ let get_iterators () =
         ; end_of_module =
             (fun _ ->
               let result_refs = get_module_metrics_result_refs ctx () in
-              let extra_info = [] (*get_module_extra_info ctx ()*) in
+              let extra_info = get_module_extra_info ctx () in
               exit_from_module ctx ();
               result_refs, extra_info)
         }

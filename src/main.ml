@@ -285,7 +285,7 @@ let () =
         ~on_lib:process_new_library
         path;
       finish_section ();
-      CollectedMetrics.Printer.report (Config.verbose ()) ()
+      CollectedMetrics.report (Config.verbose ()) ()
   in
   ()
 ;;
