@@ -1,5 +1,6 @@
   $ dune build
   $ mylinter . -met-list CC | sed -re "/^$/d"
+  LIBRARY test_CC
   FILE Functions.ml
   MODULE Functions in Functions.ml
   ____Function_metrics____

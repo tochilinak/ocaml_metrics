@@ -1,6 +1,7 @@
   $ dune build
   $ mylinter . -v-list Halstead -met-list Halstead | sed -re "/^$/d"
   Analyzing file: _build/default/Functions.ml
+  LIBRARY test_halstead
   FILE Functions.ml
   Declared modules:
   Functions

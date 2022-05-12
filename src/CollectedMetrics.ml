@@ -1,20 +1,37 @@
 open Base
 open Caml.Format
+open Zanuda_core
 open Utils
 open METRIC
 
 module Item = struct
   type t =
     | Root
+    | Executable of string * int (* name, id *)
+    | Library of string * int (* name, id *)
     | File of string (* filename *)
     | Module of string * string (* filename, modname *)
     | Function of string * string * string (* filename, modname, func_name *)
 
   let to_string = function
     | Root -> ""
+    | Executable (x, id) -> x ^ ":" ^ Format.sprintf "%d" id
+    | Library (x, id) -> x ^ ":" ^ Format.sprintf "%d" id
     | File x -> x
     | Module (x, y) -> x ^ ":" ^ y
     | Function (x, y, z) -> x ^ ":" ^ y ^ ":" ^ z
+  ;;
+
+  let last_id = ref 0
+
+  let construct_executable exe_name =
+    last_id := !last_id + 1;
+    Executable (exe_name, !last_id)
+  ;;
+
+  let construct_library lib_name =
+    last_id := !last_id + 1;
+    Library (lib_name, !last_id)
   ;;
 
   let hash x = String.hash (to_string x)
@@ -43,7 +60,20 @@ let add_value ~table ~key ~value =
 ;;
 
 let add_declaration = add_value ~table:ctx.declarations
-let add_file filename = add_declaration ~key:Root ~value:(File filename)
+
+let add_executable exe_name =
+  let exe = Item.construct_executable exe_name in
+  add_declaration ~key:Root ~value:exe;
+  exe
+;;
+
+let add_library lib_name =
+  let lib = Item.construct_library lib_name in
+  add_declaration ~key:Root ~value:lib;
+  lib
+;;
+
+let add_file where filename = add_declaration ~key:where ~value:(File filename)
 
 let add_module filename modname =
   add_declaration ~key:(File filename) ~value:(Module (filename, modname))
@@ -79,7 +109,7 @@ let add_extra_info where extra_info =
 
 let add_extra_info_module = f_on_module add_extra_info
 let add_extra_info_func = f_on_func add_extra_info
-let add_extra_info_project = add_extra_info Item.Root
+let add_extra_info_section section = add_extra_info section
 
 module Printer = struct
   let print_extra_info verbose where =
@@ -153,7 +183,11 @@ module Printer = struct
   let item_names items =
     List.map items ~f:(function
         | Item.Root -> ""
-        | Item.File x | Item.Module (_, x) | Item.Function (_, _, x) -> x)
+        | Item.File x
+        | Item.Module (_, x)
+        | Item.Function (_, _, x)
+        | Item.Executable (x, _)
+        | Item.Library (x, _) -> x)
   ;;
 
   let get_subitems key = item_names @@ List.rev (default_find ctx.declarations key)
@@ -194,8 +228,17 @@ module Printer = struct
     List.iter modules ~f:(fun x -> print_module_metrics verbose filename x)
   ;;
 
+  let print_section_info verbose section =
+    let filenames = get_subitems section in
+    (match section with
+    | Item.Executable (x, _) -> Format.printf "EXECUTABLE %s\n" x
+    | Item.Library (x, _) -> Format.printf "LIBRARY %s\n" x
+    | _ -> assert false);
+    print_extra_info verbose section;
+    List.iter filenames ~f:(print_file_info verbose)
+  ;;
+
   let report verbose () =
-    print_extra_info verbose Item.Root;
-    List.iter (get_subitems Item.Root) ~f:(print_file_info verbose)
+    List.iter (default_find ctx.declarations Item.Root) ~f:(print_section_info verbose)
   ;;
 end

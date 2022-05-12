@@ -1,5 +1,6 @@
   $ dune build
   $ mylinter . -met-list CC | sed -re "/^$/d"
+  LIBRARY test_factorial_CC
   FILE Factorial.ml
   MODULE Factorial in Factorial.ml
   ____Function_metrics____

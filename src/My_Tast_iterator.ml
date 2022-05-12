@@ -126,7 +126,6 @@ let my_structure ctx self str =
   ctx.cur_module <- ctx.cur_module ^ "." ^ ()*)
 
 let my_iterator ctx =
-  CollectedMetrics.add_file ctx.filename;
   let open Typedtree in
   { default_iterator with
     structure = my_structure ctx

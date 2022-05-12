@@ -1,5 +1,6 @@
 open Base
 open Caml.Format
+open Zanuda_core
 open Utils
 
 type module_ =
@@ -43,7 +44,7 @@ let fine_module { impl } =
   | _ -> true
 ;;
 
-let analyze_dir ~cmt:analyze_cmt ~cmti:analyze_cmti path =
+let analyze_dir ~cmt:analyze_cmt ~cmti:analyze_cmti ~on_exe ~on_lib path =
   Unix.chdir path;
   let s =
     let ch = Unix.open_process_in "dune describe" in
@@ -61,10 +62,9 @@ let analyze_dir ~cmt:analyze_cmt ~cmti:analyze_cmti path =
   let on_module _ m =
     let on_cmti source_file (_cmi_info, cmt_info) =
       Option.iter cmt_info ~f:(fun cmt ->
-          let modname = cmt.Cmt_format.cmt_modname in
           match cmt.Cmt_format.cmt_annots with
-          | Cmt_format.Implementation stru -> analyze_cmt source_file modname stru
-          | Cmt_format.Interface sign -> analyze_cmti source_file modname sign
+          | Cmt_format.Implementation stru -> analyze_cmt source_file m.name stru
+          | Cmt_format.Interface sign -> analyze_cmti source_file m.name sign
           | Cmt_format.Packed _
           | Cmt_format.Partial_implementation _
           | Cmt_format.Partial_interface _ ->
@@ -109,20 +109,33 @@ let analyze_dir ~cmt:analyze_cmt ~cmti:analyze_cmti path =
   in
   let loop_database () =
     List.iter db ~f:(function
-        | Executables { modules; requires } ->
+        | Executables { modules; requires; names } ->
           let extra_paths =
             requires
             |> List.filter_map ~f:(fun uid -> get_library uid)
             |> List.concat_map ~f:(fun { Library.include_dirs } -> include_dirs)
           in
-          List.iter modules ~f:(fun m -> if fine_module m then on_module extra_paths m)
-        | Library { Library.modules; requires } ->
+          if List.exists modules ~f:fine_module
+          then
+            if List.length names != 1
+            then (
+              eprintf "Warning: several executables: ";
+              List.iter names ~f:(eprintf "%s ");
+              eprintf "\nSkipping...\n")
+            else (
+              on_exe @@ List.nth_exn names 0;
+              List.iter modules ~f:(fun m ->
+                  if fine_module m then on_module extra_paths m))
+        | Library { Library.modules; Library.name; requires } ->
           let extra_paths =
             requires
             |> List.filter_map ~f:(fun uid -> get_library uid)
             |> List.concat_map ~f:(fun { Library.include_dirs } -> include_dirs)
           in
-          List.iter modules ~f:(fun m -> if fine_module m then on_module extra_paths m))
+          if List.exists modules ~f:fine_module
+          then (
+            on_lib name;
+            List.iter modules ~f:(fun m -> if fine_module m then on_module extra_paths m)))
   in
   loop_database ()
 ;;

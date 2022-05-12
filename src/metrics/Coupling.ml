@@ -77,16 +77,17 @@ let rec path_name ctx path =
   match path with
   | Pident id ->
     if Ident.global id
-    then (
+    then
       let name = Ident.name id in
-      if String.is_prefix name ~prefix:"Dune__exe"
-      then Filename.dirname ctx.filename ^ "|" ^ name
-      else name)
+      String.chop_prefix_if_exists ~prefix:"Dune__exe"
+      @@ String.chop_prefix_if_exists ~prefix:"Dune__exe." name
     else (
       match Ident_Hashtbl.find_opt ctx.module_of_ident id with
       | None -> cur_module ctx () ^ "." ^ Ident.name id
       | Some x -> x ^ "." ^ Ident.name id)
-  | Pdot (p, s) -> path_name ctx p ^ "." ^ s
+  | Pdot (p, s) ->
+      let further = path_name ctx p in
+      if String.equal further "" then s else further ^ "." ^ s
   | Papply (p1, _p2) -> path_name ctx p1
 ;;
 

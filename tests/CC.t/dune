@@ -1,4 +1,4 @@
 (library
- (name test_cohesion_1)
+ (name test_CC)
  (wrapped false)
  (modules functions))
