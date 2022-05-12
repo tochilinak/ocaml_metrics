@@ -62,7 +62,7 @@ let collect_function_results func_info (metrics_group_id, work_results) =
          func_name)
 ;;
 
-let collect_module_results mod_info (metrics_group_id, work_results) =
+let collect_module_results (mod_info : module_info) (metrics_group_id, work_results) =
   collect_results
     ~metrics_group_id
     ~work_results
@@ -120,6 +120,31 @@ let build_cmt_iterator_actions =
       })
 ;;
 
+let build_cmti_iterator_actions =
+  build_iterator
+    ~init:(METRIC.default_iterator_actions ())
+    ~compose:(fun metrics_group_it acc ->
+      { acc with
+        end_of_function_sig =
+          (fun info ->
+            metrics_group_it.end_of_function_sig info;
+            acc.end_of_function_sig info)
+      ; end_of_module_sig =
+          (fun info ->
+            metrics_group_it.end_of_module_sig info;
+            acc.end_of_module_sig info)
+      ; begin_of_module_sig =
+          (fun info ->
+            metrics_group_it.begin_of_module_sig info;
+            acc.begin_of_module_sig info)
+      ; begin_of_function_sig =
+          (fun info ->
+            metrics_group_it.begin_of_function_sig info;
+            acc.begin_of_function_sig info)
+      })
+    ~f:(fun x -> x)
+;;
+
 let get_action_lists () =
   List.fold
     groups_of_metrics
@@ -127,7 +152,7 @@ let get_action_lists () =
     ~f:(fun (l1, l2, l3, l4, l5, l6) (module L : METRIC.GROUP) ->
       let cur_cmt, cur_cmti = L.get_iterators () in
       ( (L.metrics_group_id, cur_cmt.actions) :: l1
-      , (L.metrics_group_id, cur_cmti.actions) :: l2
+      , cur_cmti.actions :: l2
       , cur_cmt.run :: l3
       , cur_cmti.run :: l4
       , cur_cmt.collect_delayed_metrics :: l5
@@ -181,7 +206,7 @@ let typed_on_signature info modname file_content typedtree =
     make_iterator_context
       ~filename
       ~cur_module:modname
-      ~actions:(build_cmt_iterator_actions !cmti_iter_action_list)
+      ~actions:(build_cmti_iterator_actions !cmti_iter_action_list)
   in
   build_iterator
     ~f:(fun o -> o.Tast_iterator.signature o)

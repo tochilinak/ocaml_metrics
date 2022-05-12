@@ -180,5 +180,5 @@ let get_iterators () =
     ; get_project_extra_info = (fun _ -> [])
     }
   in
-  cmt_iterator, default_group_iterator
+  cmt_iterator, default_group_iterator ()
 ;;

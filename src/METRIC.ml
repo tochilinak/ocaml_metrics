@@ -19,7 +19,11 @@ type module_info =
   }
 
 type function_sig_info = { fun_sig_name : Ident.t }
-type module_sig_info = { mod_sig_name : string }
+
+type module_sig_info =
+  { mod_sig_name : string
+  ; filename : string
+  }
 
 type metric_result =
   | Int_result of int
@@ -51,9 +55,8 @@ let default_iterator_actions : type k. k -> k iterator_actions =
   }
 ;;
 
-type metrics_group_iterator =
-  { actions : ((string * metric_result) list * string list) iterator_actions
-        (* results, extra_info *)
+type 'result metrics_group_iterator =
+  { actions : 'result iterator_actions
   ; run :
       Compile_common.info
       -> string array (* file content *)
@@ -63,8 +66,9 @@ type metrics_group_iterator =
   ; get_project_extra_info : unit -> string list
   }
 
-let default_group_iterator =
-  { actions = default_iterator_actions ([], [])
+let default_group_iterator : type k. k -> k metrics_group_iterator =
+ fun default_result ->
+  { actions = default_iterator_actions default_result
   ; run = (fun _ _ iter -> iter)
   ; collect_delayed_metrics = (fun _ -> ())
   ; get_project_extra_info = (fun _ -> [])
@@ -76,5 +80,8 @@ module type GROUP = sig
 
   val get_iterators
     :  unit
-    -> metrics_group_iterator * metrics_group_iterator (* (cmt, cmti) *)
+    -> ((string * metric_result) list * string list) metrics_group_iterator
+       * unit metrics_group_iterator
+  (* (cmt, cmti) *)
+  (* result for cmt: (metrics_results, extra_info) *)
 end

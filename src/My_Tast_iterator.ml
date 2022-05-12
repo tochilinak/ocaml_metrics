@@ -12,7 +12,7 @@ type iterator_context =
   ; actions : unit METRIC.iterator_actions
   ; mutable inside_module_binding : bool (* default: false *)
   ; mutable module_binding_name : string (* default: "" *)
-  ; mutable in_root_structure : bool (* default: true *)
+  ; mutable in_root : bool (* default: true *)
   }
 
 let make_iterator_context ~filename ~cur_module ~actions =
@@ -21,7 +21,7 @@ let make_iterator_context ~filename ~cur_module ~actions =
   ; actions
   ; inside_module_binding = false
   ; module_binding_name = ""
-  ; in_root_structure = true
+  ; in_root = true
   }
 ;;
 
@@ -109,9 +109,9 @@ let my_module_binding ctx self mb =
 ;;
 
 let my_structure ctx self str =
-  if ctx.in_root_structure
+  if ctx.in_root
   then (
-    ctx.in_root_structure <- false;
+    ctx.in_root <- false;
     let mod_info =
       { mod_name = ctx.cur_module; filename = ctx.filename; is_anonymous = false }
     in
@@ -126,19 +126,30 @@ let my_module_declaration ctx self mod_decl =
   | None -> default_iterator.module_declaration self mod_decl
   | Some modname ->
     let old_module = ctx.cur_module in
-    let info = { mod_sig_name = ctx.cur_module } in
     ctx.cur_module <- ctx.cur_module ^ "." ^ modname;
+    let info = { mod_sig_name = ctx.cur_module; filename = ctx.filename } in
     ctx.actions.begin_of_module_sig info;
     default_iterator.module_declaration self mod_decl;
     ctx.actions.end_of_module_sig info;
     ctx.cur_module <- old_module
 ;;
 
-let my_value_descroption ctx self val_desc =
+let my_value_description ctx self val_desc =
   let info = { fun_sig_name = val_desc.val_id } in
   ctx.actions.begin_of_function_sig info;
   default_iterator.value_description self val_desc;
   ctx.actions.end_of_function_sig info
+;;
+
+let my_signature ctx self sig_ =
+  if ctx.in_root
+  then (
+    ctx.in_root <- false;
+    let info = { mod_sig_name = ctx.cur_module; filename = ctx.filename } in
+    ctx.actions.begin_of_module_sig info;
+    default_iterator.signature self sig_;
+    ctx.actions.end_of_module_sig info)
+  else default_iterator.signature self sig_
 ;;
 
 let my_iterator ctx =
@@ -149,6 +160,7 @@ let my_iterator ctx =
   ; module_binding = my_module_binding ctx
   ; module_expr = my_module_expr ctx
   ; module_declaration = my_module_declaration ctx
-  ; value_description = my_value_descroption ctx
+  ; value_description = my_value_description ctx
+  ; signature = my_signature ctx
   }
 ;;

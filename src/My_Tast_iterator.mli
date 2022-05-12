@@ -7,7 +7,7 @@ type iterator_context =
   ; actions : unit METRIC.iterator_actions
   ; mutable inside_module_binding : bool (* default: false *)
   ; mutable module_binding_name : string (* default: "" *)
-  ; mutable in_root_structure : bool (* default: true *)
+  ; mutable in_root : bool (* default: true *)
   }
 
 val make_iterator_context
