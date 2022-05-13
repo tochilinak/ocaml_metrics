@@ -63,8 +63,10 @@ let analyze_dir ~cmt:analyze_cmt ~cmti:analyze_cmti ~on_exe ~on_lib path =
     let on_cmti source_file (_cmi_info, cmt_info) =
       Option.iter cmt_info ~f:(fun cmt ->
           let modname =
-              String.substr_replace_all ~pattern:"__" ~with_:"."
-              @@ String.chop_prefix_if_exists cmt.Cmt_format.cmt_modname ~prefix:"Dune__exe__"
+            String.substr_replace_all ~pattern:"__" ~with_:"."
+            @@ String.chop_prefix_if_exists
+                 cmt.Cmt_format.cmt_modname
+                 ~prefix:"Dune__exe__"
           in
           match cmt.Cmt_format.cmt_annots with
           | Cmt_format.Implementation stru -> analyze_cmt source_file modname stru

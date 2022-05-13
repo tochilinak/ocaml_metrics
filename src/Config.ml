@@ -15,6 +15,7 @@ type t =
   ; mutable verbose : bool
   ; mutable verbose_list : string list option
   ; mutable metrics_list : string list option
+  ; mutable sections_to_analyse : string list option
   }
 
 let opts =
@@ -26,6 +27,7 @@ let opts =
   ; verbose = false
   ; verbose_list = None
   ; metrics_list = None
+  ; sections_to_analyse = None
   }
 ;;
 
@@ -43,6 +45,8 @@ let prefix_to_add () = opts.prefix_to_add
 let verbose () = opts.verbose
 let set_verbose () = opts.verbose <- true
 let verbose_list () = opts.verbose_list
+let sections_to_analyse () = opts.sections_to_analyse
+let set_sections_to_analyse str = opts.sections_to_analyse <- Some (list_from_string str)
 
 let set_verbose_list str =
   set_verbose ();
@@ -82,10 +86,14 @@ let parse_args () =
       , Arg.String set_verbose_list
       , "List of metrics classes with verbose output. Example: -v-list \
          Halstead,cohesion,lines_of_code" )
+    ; ( "-sec-list"
+      , Arg.String set_sections_to_analyse
+      , "List of dune executables and libraries to analyse. Example: -sec-list \
+         main,utils_lib,graph_lib" )
     ; ( "-met-list"
       , Arg.String set_metrics_list
-      , "List of metrics to show. Example: -met-list \
-         Halstead,cohesion_LCOM_34,lines_of_code" )
+      , "List of metrics to show. Metrics is shown if it contains a substring from this \
+         list. Example: -met-list Halstead,cohesion_LCOM_34,lines_of_code" )
     ]
     set_in_dir
     "Set root directory of dune project"

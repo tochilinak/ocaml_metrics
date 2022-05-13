@@ -25,7 +25,9 @@ let init_show_list =
 
 let verbose_metrics = ref init_show_list
 let metrics_to_show = ref init_show_list
+let sections_to_analyse = ref None
 let cur_section : CollectedMetrics.Item.t option ref = ref None
+let cur_section_name = ref ""
 
 let change_metrics_lists new_verb_metrics new_metrics_to_show =
   let change list new_list =
@@ -230,33 +232,47 @@ let glob_modname modname =
   | _ -> assert false
 ;;
 
+let analyze_section section =
+  match !sections_to_analyse with
+  | None -> true
+  | Some list -> List.mem list section ~equal:String.equal
+;;
+
 let process_cmt_typedtree filename modname typedtree =
-  if Config.verbose () then printfn "Analyzing file: %s" filename;
-  (*Format.printf "Typedtree ML:\n%a\n%!" Printtyped.implementation typedtree;*)
-  let cut_filename = cut_build_dir filename in
-  CollectedMetrics.add_file (get_cur_section ()) cut_filename;
-  let file_content = List.to_array @@ ("" :: Stdio.In_channel.read_lines cut_filename) in
-  with_info filename (fun info ->
-      typed_on_structure
-        info
-        (get_exe_name ())
-        (glob_modname modname)
-        file_content
-        typedtree)
+  if analyze_section !cur_section_name
+  then (
+    if Config.verbose () then printfn "Analyzing file: %s" filename;
+    (*Format.printf "Typedtree ML:\n%a\n%!" Printtyped.implementation typedtree;*)
+    let cut_filename = cut_build_dir filename in
+    CollectedMetrics.add_file (get_cur_section ()) cut_filename;
+    let file_content =
+      List.to_array @@ ("" :: Stdio.In_channel.read_lines cut_filename)
+    in
+    with_info filename (fun info ->
+        typed_on_structure
+          info
+          (get_exe_name ())
+          (glob_modname modname)
+          file_content
+          typedtree))
 ;;
 
 let process_cmti_typedtree filename modname typedtree =
-  if Config.verbose () then printfn "Analyzing file: %s" filename;
-  (*Format.printf "Typedtree ML:\n%a\n%!" Printtyped.interface typedtree;*)
-  let cut_filename = cut_build_dir filename in
-  let file_content = List.to_array @@ ("" :: Stdio.In_channel.read_lines cut_filename) in
-  with_info filename (fun info ->
-      typed_on_signature
-        info
-        (get_exe_name ())
-        (glob_modname modname)
-        file_content
-        typedtree)
+  if analyze_section !cur_section_name
+  then (
+    if Config.verbose () then printfn "Analyzing file: %s" filename;
+    (*Format.printf "Typedtree ML:\n%a\n%!" Printtyped.interface typedtree;*)
+    let cut_filename = cut_build_dir filename in
+    let file_content =
+      List.to_array @@ ("" :: Stdio.In_channel.read_lines cut_filename)
+    in
+    with_info filename (fun info ->
+        typed_on_signature
+          info
+          (get_exe_name ())
+          (glob_modname modname)
+          file_content
+          typedtree))
 ;;
 
 let finish () =
@@ -267,16 +283,21 @@ let finish () =
 ;;
 
 let process_new_executable exe_name =
-  cur_section := Some (CollectedMetrics.add_executable exe_name)
+  if analyze_section exe_name
+  then cur_section := Some (CollectedMetrics.add_executable exe_name);
+  cur_section_name := exe_name
 ;;
 
 let process_new_library lib_name =
-  cur_section := Some (CollectedMetrics.add_library lib_name)
+  if analyze_section lib_name
+  then cur_section := Some (CollectedMetrics.add_library lib_name);
+  cur_section_name := lib_name
 ;;
 
 let () =
   Config.parse_args ();
   change_metrics_lists (Config.verbose_list ()) (Config.metrics_list ());
+  sections_to_analyse := Config.sections_to_analyse ();
   let () =
     match Config.mode () with
     | Config.Unspecified -> ()
