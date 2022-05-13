@@ -226,7 +226,7 @@ let get_exe_name () =
 let glob_modname modname =
   match !cur_section with
   | Some (Executable (x, id)) -> Format.sprintf "%s/%d" x id ^ "." ^ modname
-  | Some (Library (x, _id)) -> String.capitalize x ^ "." ^ modname
+  | Some (Library _) -> modname
   | _ -> assert false
 ;;
 

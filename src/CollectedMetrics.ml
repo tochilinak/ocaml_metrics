@@ -123,20 +123,26 @@ let print_extra_info verbose where =
 ;;
 
 let rec print_metric ?(is_rec = false) width metric_id value =
-  if not is_rec
-  then (
+  let print_name () =
     let fstr = "%" ^ Int.to_string width ^ "s: " in
-    Format.printf (Scanf.format_from_string fstr "%s") metric_id);
+    Format.printf (Scanf.format_from_string fstr "%s") metric_id
+  in
   match value with
-  | Int_result x -> Format.printf "%d\n" x
-  | Float_result x -> Format.printf "%.2f\n" x
+  | Int_result x ->
+    print_name ();
+    Format.printf "%d\n" x
+  | Float_result x ->
+    print_name ();
+    Format.printf "%.2f\n" x
   | Delayed_result x ->
     (match !x with
     | Some y ->
       assert (not is_rec);
       print_metric ~is_rec:true width metric_id y
-    | None -> Format.printf "no value\n")
+    | None -> ())
 ;;
+
+(* metrics wasn't calculated *)
 
 let default_find dict key =
   match Hashtbl.find dict key with

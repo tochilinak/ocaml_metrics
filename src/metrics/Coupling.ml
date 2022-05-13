@@ -25,8 +25,7 @@ let metrics_names = [ fan_out; fan_in; apiu ]
 
 type context =
   { mutable cur_executable : string option
-  ; module_stack : string Stack.t
-  ; mutable cur_module_is_anonymous : bool
+  ; module_stack : (string * bool) Stack.t
   ; mutable cur_function : string
   ; module_of_ident : string Ident_Hashtbl.t
   ; mutable struct_modules :
@@ -72,7 +71,6 @@ let create_metrics_refs () =
 let default_ctx () =
   { cur_executable = None
   ; module_stack = Stack.create ()
-  ; cur_module_is_anonymous = false
   ; cur_function = ""
   ; module_of_ident = Ident_Hashtbl.create 10
   ; struct_modules = Set.empty (module String)
@@ -90,7 +88,8 @@ let default_ctx () =
   }
 ;;
 
-let cur_module ctx = Stack.top_exn ctx.module_stack
+let cur_module ctx = fst @@ Stack.top_exn ctx.module_stack
+let cur_module_is_anonymous ctx = snd @@ Stack.top_exn ctx.module_stack
 
 let rec path_name ctx path =
   let open Path in
@@ -132,20 +131,22 @@ let default_find table key =
 ;;
 
 let begin_of_cmt_module ctx mod_info =
-  Stack.push ctx.module_stack mod_info.mod_name;
-  if not mod_info.is_anonymous
+  let is_anonymous =
+    mod_info.is_anonymous
+    || ((not (Stack.is_empty ctx.module_stack)) && cur_module_is_anonymous ctx)
+  in
+  Stack.push ctx.module_stack (mod_info.mod_name, is_anonymous);
+  if not is_anonymous
   then (
-    ctx.cur_module_is_anonymous <- false;
     ctx.struct_modules <- Set.add ctx.struct_modules mod_info.mod_name;
     let filename = String.chop_suffix_exn mod_info.filename ~suffix:".ml" in
     Hashtbl.add_exn ctx.file_of_module ~key:mod_info.mod_name ~data:filename;
     ctx.ml_files <- Set.add ctx.ml_files filename;
     Hashtbl.add_exn ctx.metrics_refs ~key:mod_info.mod_name ~data:(create_metrics_refs ()))
-  else ctx.cur_module_is_anonymous <- true
 ;;
 
 let begin_of_cmti_module ctx mod_sig_info =
-  Stack.push ctx.module_stack mod_sig_info.mod_sig_name;
+  Stack.push ctx.module_stack (mod_sig_info.mod_sig_name, false);
   ctx.sig_modules <- Set.add ctx.sig_modules mod_sig_info.mod_sig_name;
   let filename = String.chop_suffix_exn mod_sig_info.filename ~suffix:".mli" in
   ctx.mli_files <- Set.add ctx.mli_files filename
@@ -157,7 +158,7 @@ let exit_from_module ctx () =
 ;;
 
 let begin_of_cmt_function ctx (func_info : function_info) =
-  if not ctx.cur_module_is_anonymous
+  if not @@ cur_module_is_anonymous ctx
   then (
     ctx.cur_function <- func_info.name.name_string;
     add_item ctx.struct_functions_in_module (cur_module ctx) ctx.cur_function;
@@ -247,7 +248,7 @@ let build_graph ctx () =
 let get_metrics_refs ctx = Hashtbl.find_exn ctx.metrics_refs
 
 let get_module_metrics_result_refs ctx () =
-  if ctx.cur_module_is_anonymous
+  if cur_module_is_anonymous ctx
   then []
   else (
     let cur_metrics_refs = get_metrics_refs ctx (cur_module ctx) in
@@ -330,7 +331,7 @@ let run_cmt ctx (_, exe_name) _ fallback =
   { fallback with
     expr =
       (fun self expr ->
-        (if (not ctx.cur_module_is_anonymous) && not expr.exp_loc.loc_ghost
+        (if (not @@ cur_module_is_anonymous ctx) && not expr.exp_loc.loc_ghost
         then
           let open Tast_pattern in
           let pat = map1 (texp_ident __) ~f:(path_name ctx) in
@@ -346,7 +347,7 @@ let run_cmt ctx (_, exe_name) _ fallback =
         fallback.expr self expr)
   ; pat =
       (fun self pat ->
-        if (not ctx.cur_module_is_anonymous) && not pat.pat_loc.loc_ghost
+        if (not @@ cur_module_is_anonymous ctx) && not pat.pat_loc.loc_ghost
         then (
           let parse_pat : type k. k Tast_pattern.gen_pat -> unit =
            fun pat ->

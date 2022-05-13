@@ -44,7 +44,7 @@ let my_value_bindings ctx rec_flag self list =
   in
   let block = List.map list ~f:get_name in
   List.iteri list ~f:(fun i x ->
-      if x.vb_loc.loc_ghost
+      if empty_loc x.vb_loc
       then self.value_binding self x
       else (
         let func_info =
