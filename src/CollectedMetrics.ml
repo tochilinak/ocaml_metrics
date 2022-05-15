@@ -138,8 +138,13 @@ let rec print_metric ?(is_rec = false) width metric_id value =
     | Some y, _ ->
       assert (not is_rec);
       print_metric ~is_rec:true width metric_id y
-    | None, _ -> ())
+    | None, true -> ()
+    | None, _ ->
+      Format.eprintf "Metric %s wasn't calculated\n" metric_id;
+      assert false)
 ;;
+
+(* metric wasn't calculated *)
 
 (* metrics wasn't calculated *)
 

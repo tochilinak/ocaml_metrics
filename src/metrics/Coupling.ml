@@ -24,6 +24,7 @@ let apiu = "APIU"
 let ext = "EXT"
 let metrics_of_modules = [ fan_out; fan_in; apiu; ext ]
 let metrics_of_functions = [ ext ]
+let only_public_module_metrics = [ fan_out; fan_in; apiu ]
 
 type context =
   { mutable cur_executable : string option
@@ -142,7 +143,7 @@ let begin_of_cmt_module ctx mod_info =
     || ((not (Stack.is_empty ctx.module_stack)) && cur_module_is_anonymous ctx)
   in
   Stack.push ctx.module_stack (mod_info.mod_name, is_anonymous);
-  ctx.all_struct_modules <- Set.add ctx.struct_modules mod_info.mod_name;
+  ctx.all_struct_modules <- Set.add ctx.all_struct_modules mod_info.mod_name;
   Hashtbl.add_exn
     ctx.metrics_refs
     ~key:mod_info.mod_name
@@ -262,8 +263,8 @@ let build_graph ctx () =
 
 let get_metrics_refs ctx = Hashtbl.find_exn ctx.metrics_refs
 
-let get_function_metrics_result_refs ctx () =
-  let func_with_mod = cur_module ctx ^ "." ^ ctx.cur_function in
+let get_function_metrics_result_refs ctx func_name =
+  let func_with_mod = cur_module ctx ^ "." ^ func_name in
   let cur_metrics_refs = get_metrics_refs ctx func_with_mod in
   List.map metrics_of_functions ~f:(fun x ->
       x, Delayed_result (Hashtbl.find_exn cur_metrics_refs x))
@@ -336,9 +337,21 @@ let collect_ext ctx () =
       ext_ref_mod := Some (Int_result (Set.length project_calls_mod)), false)
 ;;
 
+let mark_uncalculated_metrics ctx () =
+  let private_modules =
+    Set.filter ctx.all_struct_modules ~f:(fun modname ->
+        not @@ MyDigraph.mem_vertex ctx.module_call_graph modname)
+  in
+  Set.iter private_modules ~f:(fun modname ->
+      List.iter only_public_module_metrics ~f:(fun metrics ->
+          let result_ref = Hashtbl.find_exn (get_metrics_refs ctx modname) metrics in
+          result_ref := None, true))
+;;
+
 let collect_delayed_metrics ctx () =
   collect_ext ctx ();
-  collect_metrics_of_public_modules ctx ()
+  collect_metrics_of_public_modules ctx ();
+  mark_uncalculated_metrics ctx ()
 ;;
 
 module Printer = Graph.Graphviz.Dot (struct
@@ -357,12 +370,10 @@ module Printer = Graph.Graphviz.Dot (struct
   let vertex_name vertex = "\"" ^ vertex ^ "\""
 end)
 
-let get_function_extra_info ctx () =
+let get_function_extra_info ctx func_name =
   "Called from function:"
   :: (Set.to_list
-     @@ default_find
-          ctx.called_items_from_function
-          (cur_module ctx ^ "." ^ ctx.cur_function))
+     @@ default_find ctx.called_items_from_function (cur_module ctx ^ "." ^ func_name))
 ;;
 
 let get_project_extra_info ctx () =
@@ -383,7 +394,7 @@ let run_cmt ctx (_, exe_name) _ fallback =
   { fallback with
     expr =
       (fun self expr ->
-        (if (not @@ cur_module_is_anonymous ctx) && not expr.exp_loc.loc_ghost
+        (if not expr.exp_loc.loc_ghost
         then
           let open Tast_pattern in
           let pat = map1 (texp_ident __) ~f:(path_name ctx) in
@@ -399,7 +410,7 @@ let run_cmt ctx (_, exe_name) _ fallback =
         fallback.expr self expr)
   ; pat =
       (fun self pat ->
-        if (not @@ cur_module_is_anonymous ctx) && not pat.pat_loc.loc_ghost
+        if not pat.pat_loc.loc_ghost
         then (
           let parse_pat : type k. k Tast_pattern.gen_pat -> unit =
            fun pat ->
@@ -442,9 +453,10 @@ let get_iterators () =
         { (default_iterator_actions ([], [])) with
           begin_of_function = begin_of_cmt_function ctx
         ; end_of_function =
-            (fun _ ->
-              let extra_info = get_function_extra_info ctx () in
-              let result_refs = get_function_metrics_result_refs ctx () in
+            (fun info ->
+              let func_name = info.name.name_string in
+              let extra_info = get_function_extra_info ctx func_name in
+              let result_refs = get_function_metrics_result_refs ctx func_name in
               end_of_function ctx ();
               result_refs, extra_info)
         ; begin_of_module = begin_of_cmt_module ctx
