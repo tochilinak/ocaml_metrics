@@ -28,7 +28,7 @@ type module_sig_info =
 type metric_result =
   | Int_result of int
   | Float_result of float
-  | Delayed_result of metric_result option ref
+  | Delayed_result of (metric_result option * bool) ref (* bool: won't be calculated *)
 
 type 'result iterator_actions =
   { (* functions called by My_Tast_iterator *)

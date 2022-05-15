@@ -135,10 +135,10 @@ let rec print_metric ?(is_rec = false) width metric_id value =
     Format.printf "%.2f\n" x
   | Delayed_result x ->
     (match !x with
-    | Some y ->
+    | Some y, _ ->
       assert (not is_rec);
       print_metric ~is_rec:true width metric_id y
-    | None -> ())
+    | None, _ -> ())
 ;;
 
 (* metrics wasn't calculated *)

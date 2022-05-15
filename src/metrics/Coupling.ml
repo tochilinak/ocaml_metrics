@@ -18,10 +18,12 @@ end
 module MyDigraph = Graph.Imperative.Digraph.ConcreteLabeled (String) (Edge_label)
 
 let metrics_group_id = "coupling"
-let fan_out = "FAN-OUT"
-let fan_in = "FAN-IN"
+let fan_out = "Fan-out"
+let fan_in = "Fan-in"
 let apiu = "APIU"
-let metrics_names = [ fan_out; fan_in; apiu ]
+let ext = "EXT"
+let metrics_of_modules = [ fan_out; fan_in; apiu; ext ]
+let metrics_of_functions = [ ext ]
 
 type context =
   { mutable cur_executable : string option
@@ -30,6 +32,8 @@ type context =
   ; module_of_ident : string Ident_Hashtbl.t
   ; mutable struct_modules :
       (string, String.comparator_witness) Set.t (* modules from .ml *)
+  ; mutable all_struct_modules :
+      (string, String.comparator_witness) Set.t (* modules from .ml including anonymous *)
   ; mutable sig_modules :
       (string, String.comparator_witness) Set.t (* modules from .mli *)
   ; struct_functions_in_module :
@@ -51,16 +55,17 @@ type context =
   ; mutable mli_files :
       (string, String.comparator_witness) Set.t (* filenames without extension *)
   ; metrics_refs :
-      (string, (string, metric_result option ref) Hashtbl.t) Hashtbl.t (* key: modname *)
+      (string, (string, (metric_result option * bool) ref) Hashtbl.t) Hashtbl.t
+        (* key: modname *)
   ; module_call_graph : MyDigraph.t
   }
 
-let create_metrics_refs () =
+let create_metrics_refs metrics_names =
   let res =
     Hashtbl.create_mapped
       (module String)
       ~get_key:(fun x -> x)
-      ~get_data:(fun _ -> ref None)
+      ~get_data:(fun _ -> ref (None, false))
       metrics_names
   in
   match res with
@@ -74,6 +79,7 @@ let default_ctx () =
   ; cur_function = ""
   ; module_of_ident = Ident_Hashtbl.create 10
   ; struct_modules = Set.empty (module String)
+  ; all_struct_modules = Set.empty (module String)
   ; sig_modules = Set.empty (module String)
   ; struct_functions_in_module = Hashtbl.create (module String)
   ; sig_functions_in_module = Hashtbl.create (module String)
@@ -136,13 +142,17 @@ let begin_of_cmt_module ctx mod_info =
     || ((not (Stack.is_empty ctx.module_stack)) && cur_module_is_anonymous ctx)
   in
   Stack.push ctx.module_stack (mod_info.mod_name, is_anonymous);
+  ctx.all_struct_modules <- Set.add ctx.struct_modules mod_info.mod_name;
+  Hashtbl.add_exn
+    ctx.metrics_refs
+    ~key:mod_info.mod_name
+    ~data:(create_metrics_refs metrics_of_modules);
   if not is_anonymous
   then (
     ctx.struct_modules <- Set.add ctx.struct_modules mod_info.mod_name;
     let filename = String.chop_suffix_exn mod_info.filename ~suffix:".ml" in
     Hashtbl.add_exn ctx.file_of_module ~key:mod_info.mod_name ~data:filename;
-    ctx.ml_files <- Set.add ctx.ml_files filename;
-    Hashtbl.add_exn ctx.metrics_refs ~key:mod_info.mod_name ~data:(create_metrics_refs ()))
+    ctx.ml_files <- Set.add ctx.ml_files filename)
 ;;
 
 let begin_of_cmti_module ctx mod_sig_info =
@@ -158,12 +168,17 @@ let exit_from_module ctx () =
 ;;
 
 let begin_of_cmt_function ctx (func_info : function_info) =
+  ctx.cur_function <- func_info.name.name_string;
+  add_item ctx.struct_functions_in_module (cur_module ctx) ctx.cur_function;
+  let func_with_mod = cur_module ctx ^ "." ^ ctx.cur_function in
+  Hashtbl.add_exn
+    ctx.metrics_refs
+    ~key:func_with_mod
+    ~data:(create_metrics_refs metrics_of_functions);
   if not @@ cur_module_is_anonymous ctx
-  then (
-    ctx.cur_function <- func_info.name.name_string;
-    add_item ctx.struct_functions_in_module (cur_module ctx) ctx.cur_function;
+  then
     List.iter func_info.name.name_ident_list ~f:(fun x ->
-        add_item ctx.api_functions_in_module (cur_module ctx) (Ident.name x)))
+        add_item ctx.api_functions_in_module (cur_module ctx) (Ident.name x))
 ;;
 
 let end_of_function ctx _ = ctx.cur_function <- ""
@@ -247,13 +262,17 @@ let build_graph ctx () =
 
 let get_metrics_refs ctx = Hashtbl.find_exn ctx.metrics_refs
 
+let get_function_metrics_result_refs ctx () =
+  let func_with_mod = cur_module ctx ^ "." ^ ctx.cur_function in
+  let cur_metrics_refs = get_metrics_refs ctx func_with_mod in
+  List.map metrics_of_functions ~f:(fun x ->
+      x, Delayed_result (Hashtbl.find_exn cur_metrics_refs x))
+;;
+
 let get_module_metrics_result_refs ctx () =
-  if cur_module_is_anonymous ctx
-  then []
-  else (
-    let cur_metrics_refs = get_metrics_refs ctx (cur_module ctx) in
-    List.map metrics_names ~f:(fun x ->
-        x, Delayed_result (Hashtbl.find_exn cur_metrics_refs x)))
+  let cur_metrics_refs = get_metrics_refs ctx (cur_module ctx) in
+  List.map metrics_of_modules ~f:(fun x ->
+      x, Delayed_result (Hashtbl.find_exn cur_metrics_refs x))
 ;;
 
 let calc_apiu ctx modname =
@@ -273,7 +292,7 @@ let calc_apiu ctx modname =
   else float_of_int sum /. (float_of_int @@ (num * func_num))
 ;;
 
-let collect_delayed_metrics ctx () =
+let collect_metrics_of_public_modules ctx () =
   build_graph ctx ();
   MyDigraph.iter_vertex
     (fun modname ->
@@ -283,10 +302,43 @@ let collect_delayed_metrics ctx () =
       let fan_in_ref = get_ref fan_in in
       let apiu_ref = get_ref apiu in
       fan_out_ref
-        := Some (Int_result (MyDigraph.out_degree ctx.module_call_graph modname));
-      fan_in_ref := Some (Int_result (MyDigraph.in_degree ctx.module_call_graph modname));
-      apiu_ref := Some (Float_result (calc_apiu ctx modname)))
+        := Some (Int_result (MyDigraph.out_degree ctx.module_call_graph modname)), false;
+      fan_in_ref
+        := Some (Int_result (MyDigraph.in_degree ctx.module_call_graph modname)), false;
+      apiu_ref := Some (Float_result (calc_apiu ctx modname)), false)
     ctx.module_call_graph
+;;
+
+let collect_ext ctx () =
+  Hashtbl.iter_keys ctx.struct_functions_in_module ~f:(fun modname ->
+      let ext_ref_mod = Hashtbl.find_exn (get_metrics_refs ctx modname) ext in
+      let project_calls_mod =
+        Set.fold
+          (Hashtbl.find_exn ctx.struct_functions_in_module modname)
+          ~init:(Set.empty (module String))
+          ~f:(fun acc func_name ->
+            let func_with_mod = modname ^ "." ^ func_name in
+            let project_calls =
+              Set.filter
+                (default_find ctx.called_items_from_function func_with_mod)
+                ~f:(fun call ->
+                  let call_modname, _ = String.rsplit2_exn call ~on:'.' in
+                  (not (String.equal modname call_modname))
+                  && Set.mem ctx.struct_modules call_modname)
+            in
+            let ext_val = Set.length project_calls in
+            let ext_ref_func =
+              Hashtbl.find_exn (get_metrics_refs ctx func_with_mod) ext
+            in
+            ext_ref_func := Some (Int_result ext_val), false;
+            Set.union acc project_calls)
+      in
+      ext_ref_mod := Some (Int_result (Set.length project_calls_mod)), false)
+;;
+
+let collect_delayed_metrics ctx () =
+  collect_ext ctx ();
+  collect_metrics_of_public_modules ctx ()
 ;;
 
 module Printer = Graph.Graphviz.Dot (struct
@@ -392,8 +444,9 @@ let get_iterators () =
         ; end_of_function =
             (fun _ ->
               let extra_info = get_function_extra_info ctx () in
+              let result_refs = get_function_metrics_result_refs ctx () in
               end_of_function ctx ();
-              [], extra_info)
+              result_refs, extra_info)
         ; begin_of_module = begin_of_cmt_module ctx
         ; end_of_module =
             (fun _ ->
