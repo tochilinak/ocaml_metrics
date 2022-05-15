@@ -65,15 +65,17 @@ Metrics names are printed in the following format: `[metrics group id]_[metrics 
             </td>
         </tr>
         <tr>
-            <td rowspan=3 align="center">coupling</td>
-            <td rowspan=3 align="left">
+            <td rowspan=4 align="center">coupling</td>
+            <td rowspan=4 align="left">
                 <b align="center">Coupling metrics</b><br />
+                <i>Note:</i> Fan-in, Fan-out and APIU are calculated only for public modules;<br />
+                EXT is calculated for both modules and functions.
             </td>
-            <td align="center">FAN-IN</td>
+            <td align="center">Fan-in</td>
             <td align="left">Number of modules that depend on given module </td>
         </tr>
         <tr>
-            <td  align="center">FAN-OUT</td>
+            <td  align="center">Fan-out</td>
             <td>
                 Numbers of modules that the given module depends on
             </td>
@@ -86,12 +88,19 @@ Metrics names are printed in the following format: `[metrics group id]_[metrics 
                 <img src="https://render.githubusercontent.com/render/math?math=m">
                 has
                 <img src="https://render.githubusercontent.com/render/math?math=n">
-                defined functions,
+                public functions,
                 in project <img src="https://render.githubusercontent.com/render/math?math=k">
                 other modules <img src="https://render.githubusercontent.com/render/math?math=m_1, \ldots, m_k">
                 call one or more function from <img src="https://render.githubusercontent.com/render/math?math=m">.<br />
                 <img src="https://render.githubusercontent.com/render/math?math=\mathrm{APIU} = \frac{\sum_{j=1}^k n_j}{nk}">
                 or 0 if <img src="https://render.githubusercontent.com/render/math?math=nk = 0">
+            </td>
+        </tr>
+        <tr>
+            <td  align="center">EXT</td>
+            <td>
+                External method calls.<br />
+                Number of external methods called by a function or a module (only functions defined in the project are considered).
             </td>
         </tr>
         <tr>
