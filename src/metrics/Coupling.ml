@@ -22,9 +22,10 @@ let fan_out = "Fan-out"
 let fan_in = "Fan-in"
 let apiu = "APIU"
 let ext = "EXT"
-let metrics_of_modules = [ fan_out; fan_in; apiu; ext ]
+let ac = "AC"
+let metrics_of_modules = [ fan_out; fan_in; apiu; ac; ext ]
 let metrics_of_functions = [ ext ]
-let only_public_module_metrics = [ fan_out; fan_in; apiu ]
+let only_public_module_metrics = [ fan_out; fan_in; apiu; ac ]
 
 type context =
   { mutable cur_executable : string option
@@ -293,6 +294,52 @@ let calc_apiu ctx modname =
   else float_of_int sum /. (float_of_int @@ (num * func_num))
 ;;
 
+let get_mod_name func_with_mod = fst @@ String.rsplit2_exn func_with_mod ~on:'.'
+
+let calc_ac ctx modname =
+  let all_mod_num = Set.length ctx.struct_modules - 1 in
+  let all_func_num, mod_func_num =
+    Hashtbl.fold
+      ctx.struct_functions_in_module
+      ~init:(0, 0)
+      ~f:(fun ~key ~data (x1, x2) ->
+        if String.equal modname key then x1, Set.length data else x1 + Set.length data, x2)
+  in
+  let using_func_num, using_mod_set =
+    Hashtbl.fold
+      ctx.called_items_from_function
+      ~init:(0, Set.empty (module String))
+      ~f:(fun ~key:func_with_mod ~data:calls (x1, x2) ->
+        let call_modname = get_mod_name func_with_mod in
+        if (not (String.equal modname call_modname))
+           && Set.mem ctx.struct_modules call_modname
+           && Set.exists calls ~f:(fun x -> String.equal modname @@ get_mod_name x)
+        then x1 + 1, Set.add x2 call_modname
+        else x1, x2)
+  in
+  let using_mod_num = Set.length using_mod_set in
+  let calling_inner_func_num =
+    Hashtbl.counti
+      ctx.called_items_from_function
+      ~f:(fun ~key:func_with_mod ~data:calls ->
+        let call_modname = get_mod_name func_with_mod in
+        String.equal modname call_modname
+        && Set.exists calls ~f:(fun x ->
+               let func_modname = get_mod_name x in
+               Set.mem ctx.struct_modules func_modname
+               && (not @@ String.equal modname func_modname)))
+  in
+  let f = float_of_int in
+  let ac_1 = if all_mod_num == 0 then 1. else 1. -. (f using_mod_num /. f all_mod_num) in
+  let ac_2 =
+    if all_func_num == 0 then 1. else 1. -. (f using_func_num /. f all_func_num)
+  in
+  let ac_3 =
+    if mod_func_num == 0 then 1. else 1. -. (f calling_inner_func_num /. f mod_func_num)
+  in
+  Float.min (Float.min ac_1 ac_2) ac_3
+;;
+
 let collect_metrics_of_public_modules ctx () =
   build_graph ctx ();
   MyDigraph.iter_vertex
@@ -302,11 +349,13 @@ let collect_metrics_of_public_modules ctx () =
       let fan_out_ref = get_ref fan_out in
       let fan_in_ref = get_ref fan_in in
       let apiu_ref = get_ref apiu in
+      let ac_ref = get_ref ac in
       fan_out_ref
         := Some (Int_result (MyDigraph.out_degree ctx.module_call_graph modname)), false;
       fan_in_ref
         := Some (Int_result (MyDigraph.in_degree ctx.module_call_graph modname)), false;
-      apiu_ref := Some (Float_result (calc_apiu ctx modname)), false)
+      apiu_ref := Some (Float_result (calc_apiu ctx modname)), false;
+      ac_ref := Some (Float_result (calc_ac ctx modname)), false)
     ctx.module_call_graph
 ;;
 
