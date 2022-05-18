@@ -25,7 +25,7 @@ let ext = "EXT"
 let ac = "AC"
 let metrics_of_modules = [ fan_out; fan_in; apiu; ac; ext ]
 let metrics_of_functions = [ ext ]
-let only_public_module_metrics = [ fan_out; fan_in; apiu; ac ]
+let only_public_module_metrics = [ fan_out; fan_in; apiu ]
 
 type context =
   { mutable cur_executable : string option
@@ -337,6 +337,7 @@ let calc_ac ctx modname =
   let ac_3 =
     if mod_func_num == 0 then 1. else 1. -. (f calling_inner_func_num /. f mod_func_num)
   in
+  (*Format.printf "%s %f %f %f\n" modname ac_1 ac_2 ac_3;*)
   Float.min (Float.min ac_1 ac_2) ac_3
 ;;
 
@@ -349,14 +350,19 @@ let collect_metrics_of_public_modules ctx () =
       let fan_out_ref = get_ref fan_out in
       let fan_in_ref = get_ref fan_in in
       let apiu_ref = get_ref apiu in
-      let ac_ref = get_ref ac in
       fan_out_ref
         := Some (Int_result (MyDigraph.out_degree ctx.module_call_graph modname)), false;
       fan_in_ref
         := Some (Int_result (MyDigraph.in_degree ctx.module_call_graph modname)), false;
-      apiu_ref := Some (Float_result (calc_apiu ctx modname)), false;
-      ac_ref := Some (Float_result (calc_ac ctx modname)), false)
+      apiu_ref := Some (Float_result (calc_apiu ctx modname)), false)
     ctx.module_call_graph
+;;
+
+let collect_ac ctx () =
+  Set.iter ctx.all_struct_modules ~f:(fun modname ->
+      let cur_metrics_refs = get_metrics_refs ctx modname in
+      let ac_ref = Hashtbl.find_exn cur_metrics_refs ac in
+      ac_ref := Some (Float_result (calc_ac ctx modname)), false)
 ;;
 
 let collect_ext ctx () =
@@ -399,6 +405,7 @@ let mark_uncalculated_metrics ctx () =
 
 let collect_delayed_metrics ctx () =
   collect_ext ctx ();
+  collect_ac ctx ();
   collect_metrics_of_public_modules ctx ();
   mark_uncalculated_metrics ctx ()
 ;;

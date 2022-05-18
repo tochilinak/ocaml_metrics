@@ -140,13 +140,10 @@ let rec print_metric ?(is_rec = false) width metric_id value =
       print_metric ~is_rec:true width metric_id y
     | None, true -> ()
     | None, _ ->
+      (* metric wasn't calculated *)
       Format.eprintf "Metric %s wasn't calculated\n" metric_id;
       assert false)
 ;;
-
-(* metric wasn't calculated *)
-
-(* metrics wasn't calculated *)
 
 let default_find dict key =
   match Hashtbl.find dict key with
