@@ -65,8 +65,8 @@ Metrics names are printed in the following format: `[metrics group id]_[metrics 
             </td>
         </tr>
         <tr>
-            <td rowspan=4 align="center">coupling</td>
-            <td rowspan=4 align="left">
+            <td rowspan=5 align="center">coupling</td>
+            <td rowspan=5 align="left">
                 <b align="center">Coupling metrics</b><br />
                 <i>Note:</i> Fan-in, Fan-out and APIU are calculated only for public modules;<br />
                 EXT is calculated for both modules and functions.
@@ -100,7 +100,24 @@ Metrics names are printed in the following format: `[metrics group id]_[metrics 
             <td  align="center">EXT</td>
             <td>
                 External method calls.<br />
-                Number of external methods called by a function or a module (only functions defined in the project are considered).
+                Number of external functions called by a function or a module (only functions defined in the project are considered).
+            </td>
+        </tr>
+        <tr>
+            <td  align="center">AC</td>
+            <td>
+                Association-Induced Coupling Metrics.<br />
+                M = modules in project;<br />
+                Mod_ext(m) = modules that have functions that use functions from m;<br />
+                F = functions in project;<br />
+                F(m) = functions in module m;<br />
+                Func_ext(m) = functions that use functions from m;<br />
+                Func_int(m) = functions in m that use functions from other modules in M;
+                <br />
+                <img src="https://render.githubusercontent.com/render/math?math=\mathrm{AC}_1(m) = 1 - \frac{|\mathrm{Mod_ext}(m)|}{|M| - 1}"><br />
+                <img src="https://render.githubusercontent.com/render/math?math=\mathrm{AC}_2(m) = 1 - \frac{|\mathrm{Func_ext}(m)|}{|F| - |F(m)|}"><br />
+                <img src="https://render.githubusercontent.com/render/math?math=\mathrm{AC}_3(m) = 1 - \frac{|\mathrm{Func_int}(m)|}{|F(m)|}"><br />
+                <img src="https://render.githubusercontent.com/render/math?math=\mathrm{AC} = \min(\mathrm{AC}_1, \mathrm{AC}_2, \mathrm{AC}_3)">
             </td>
         </tr>
         <tr>
