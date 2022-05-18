@@ -164,7 +164,7 @@ let run contexts _ _ fallback =
   }
 ;;
 
-let get_iterators () =
+let get_iterator_builder () =
   let contexts : context Stack.t = Stack.create () in
   let cmt_iterator =
     { run = run contexts
@@ -176,9 +176,7 @@ let get_iterators () =
             (fun _ ->
               get_module_metrics_result contexts (), get_module_extra_info contexts ())
         }
-    ; collect_delayed_metrics = (fun _ -> ())
-    ; get_project_extra_info = (fun _ -> [])
     }
   in
-  cmt_iterator, default_group_iterator ()
+  { default_metrics_group_iterator_builder with cmt = cmt_iterator }
 ;;

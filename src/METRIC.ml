@@ -55,21 +55,32 @@ let default_iterator_actions : type k. k -> k iterator_actions =
   }
 ;;
 
-type 'result metrics_group_iterator =
+type 'result iterator_builder =
   { actions : 'result iterator_actions
   ; run :
       Compile_common.info * string option
       -> string array (* file content *)
       -> Tast_iterator.iterator
       -> Tast_iterator.iterator
+  }
+
+let default_iterator_builder : type k. k -> k iterator_builder =
+  (fun default_result ->
+    { actions = default_iterator_actions default_result
+    ; run = (fun _ _ x -> x)
+    })
+
+type metrics_group_iterator_builder =
+  { (* result for cmt: (metrics_results, extra_info) *)
+    cmt : ((string * metric_result) list * string list) iterator_builder
+  ; cmti : unit iterator_builder
   ; collect_delayed_metrics : unit -> unit
   ; get_project_extra_info : unit -> string list
   }
 
-let default_group_iterator : type k. k -> k metrics_group_iterator =
- fun default_result ->
-  { actions = default_iterator_actions default_result
-  ; run = (fun _ _ iter -> iter)
+let default_metrics_group_iterator_builder =
+  { cmt = default_iterator_builder ([], [])
+  ; cmti = default_iterator_builder ()
   ; collect_delayed_metrics = (fun _ -> ())
   ; get_project_extra_info = (fun _ -> [])
   }
@@ -77,11 +88,5 @@ let default_group_iterator : type k. k -> k metrics_group_iterator =
 
 module type GROUP = sig
   val metrics_group_id : string
-
-  val get_iterators
-    :  unit
-    -> ((string * metric_result) list * string list) metrics_group_iterator
-       * unit metrics_group_iterator
-  (* (cmt, cmti) *)
-  (* result for cmt: (metrics_results, extra_info) *)
+  val get_iterator_builder : unit -> metrics_group_iterator_builder
 end

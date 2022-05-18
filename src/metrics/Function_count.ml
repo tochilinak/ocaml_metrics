@@ -61,7 +61,7 @@ let run ctx _ _ fallback =
   }
 ;;
 
-let get_iterators () =
+let get_iterator_builder () =
   let ctx = default_ctx () in
   let cmt_iterator =
     { actions =
@@ -71,9 +71,7 @@ let get_iterators () =
             (fun _ -> get_module_metrics_result ctx (), get_module_extra_info ctx ())
         }
     ; run = run ctx
-    ; collect_delayed_metrics = (fun () -> ())
-    ; get_project_extra_info = (fun () -> [])
     }
   in
-  cmt_iterator, default_group_iterator ()
+  { default_metrics_group_iterator_builder with cmt = cmt_iterator}
 ;;

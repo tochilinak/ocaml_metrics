@@ -502,7 +502,7 @@ let run_cmt ctx (_, exe_name) _ fallback =
   }
 ;;
 
-let get_iterators () =
+let get_iterator_builder () =
   let ctx = default_ctx () in
   let cmt_iterator =
     { actions =
@@ -523,13 +523,11 @@ let get_iterators () =
               result_refs, [])
         }
     ; run = run_cmt ctx
-    ; collect_delayed_metrics = collect_delayed_metrics ctx
-    ; get_project_extra_info = get_project_extra_info ctx
     }
   in
   let cmti_iterator =
-    { (default_group_iterator ()) with
-      actions =
+    { run = (fun _ _ x -> x)
+    ; actions =
         { (default_iterator_actions ()) with
           begin_of_function_sig = begin_of_cmti_function ctx
         ; end_of_function_sig = end_of_function ctx
@@ -538,5 +536,9 @@ let get_iterators () =
         }
     }
   in
-  cmt_iterator, cmti_iterator
+  { cmt = cmt_iterator
+  ; cmti = cmti_iterator
+  ; collect_delayed_metrics = collect_delayed_metrics ctx
+  ; get_project_extra_info = get_project_extra_info ctx
+  }
 ;;

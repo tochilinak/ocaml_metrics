@@ -158,13 +158,13 @@ let ( cmt_iter_action_list
     groups_of_metrics
     ~init:([], [], [], [], [], [])
     ~f:(fun (l1, l2, l3, l4, l5, l6) (module L : METRIC.GROUP) ->
-      let cur_cmt, cur_cmti = L.get_iterators () in
-      ( (L.metrics_group_id, cur_cmt.actions) :: l1
-      , cur_cmti.actions :: l2
-      , cur_cmt.run :: l3
-      , cur_cmti.run :: l4
-      , cur_cmt.collect_delayed_metrics :: l5
-      , (L.metrics_group_id, cur_cmt.get_project_extra_info) :: l6 ))
+      let builder = L.get_iterator_builder () in
+      ( (L.metrics_group_id, builder.cmt.actions) :: l1
+      , builder.cmti.actions :: l2
+      , builder.cmt.run :: l3
+      , builder.cmti.run :: l4
+      , builder.collect_delayed_metrics :: l5
+      , (L.metrics_group_id, builder.get_project_extra_info) :: l6 ))
 ;;
 
 let typed_on_structure info exe_name modname file_content typedtree =
