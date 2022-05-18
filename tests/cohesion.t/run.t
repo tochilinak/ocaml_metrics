@@ -1,5 +1,5 @@
   $ dune build
-  $ mylinter . -met-list cohesion -v-list cohesion | sed -re "s/ *$//" | sed -re "/^$/d"
+  $ ocaml_metrics . -met-list cohesion -v-list cohesion | sed -re "s/ *$//" | sed -re "/^$/d"
   Analyzing file: _build/default/Cohesion.ml
   LIBRARY test_cohesion
   FILE Cohesion.ml

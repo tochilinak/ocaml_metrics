@@ -1,5 +1,5 @@
   $ dune build
-  $ mylinter . -met-list CC | sed -re "/^$/d"
+  $ ocaml_metrics . -met-list CC | sed -re "/^$/d"
   LIBRARY test_CC
   FILE Functions.ml
   MODULE Functions in Functions.ml

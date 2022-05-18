@@ -1,5 +1,5 @@
   $ dune build
-  $ mylinter . -met-list LOC | sed -re "/^$/d"
+  $ ocaml_metrics . -met-list LOC | sed -re "/^$/d"
   LIBRARY test_LOC
   FILE Functions.ml
   MODULE Functions in Functions.ml

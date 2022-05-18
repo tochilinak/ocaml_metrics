@@ -1,5 +1,4 @@
 open Tast_iterator
-open Zanuda_core
 
 type iterator_context =
   { filename : string

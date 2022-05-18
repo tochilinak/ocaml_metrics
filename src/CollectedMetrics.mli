@@ -1,5 +1,3 @@
-open Zanuda_core
-
 module Item : sig
   type t =
     | Root

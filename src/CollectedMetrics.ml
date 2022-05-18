@@ -1,6 +1,5 @@
 open Base
 open Caml.Format
-open Zanuda_core
 open METRIC
 
 module Item = struct

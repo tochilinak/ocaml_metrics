@@ -1,5 +1,5 @@
   $ dune build
-  $ mylinter . -met-list coupling -v-list coupling | sed -re "s/ *$//" | sed -re "/^$/d"
+  $ ocaml_metrics . -met-list coupling -v-list coupling | sed -re "s/ *$//" | sed -re "/^$/d"
   Analyzing file: _build/default/Usage.ml
   Analyzing file: _build/default/Graph.ml
   Analyzing file: _build/default/Algo.ml

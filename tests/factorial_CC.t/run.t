@@ -1,5 +1,5 @@
   $ dune build
-  $ mylinter . -met-list CC | sed -re "/^$/d"
+  $ ocaml_metrics . -met-list CC | sed -re "/^$/d"
   LIBRARY test_factorial_CC
   FILE Factorial.ml
   MODULE Factorial in Factorial.ml
