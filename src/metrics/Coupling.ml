@@ -297,7 +297,7 @@ let calc_apiu ctx modname =
 let get_mod_name func_with_mod = fst @@ String.rsplit2_exn func_with_mod ~on:'.'
 
 let calc_ac ctx modname =
-  let all_mod_num = Set.length ctx.struct_modules - 1 in
+  let all_mod_num = Set.length ctx.all_struct_modules - 1 in
   let all_func_num, mod_func_num =
     Hashtbl.fold
       ctx.struct_functions_in_module
@@ -312,7 +312,7 @@ let calc_ac ctx modname =
       ~f:(fun ~key:func_with_mod ~data:calls (x1, x2) ->
         let call_modname = get_mod_name func_with_mod in
         if (not (String.equal modname call_modname))
-           && Set.mem ctx.struct_modules call_modname
+           && Set.mem ctx.all_struct_modules call_modname
            && Set.exists calls ~f:(fun x -> String.equal modname @@ get_mod_name x)
         then x1 + 1, Set.add x2 call_modname
         else x1, x2)
