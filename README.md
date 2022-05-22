@@ -10,7 +10,7 @@ Run tool:
 
 `-sec-list  <L1>,<L2>,<L3>` - dune libraries and executables from project to analyze
 
-`-v-list <V1>,<V2>,<V3>` - print verbose output of metrics from this list
+`-v-list <V1>,<V2>,<V3>` - print verbose output of metrics groups from this list
 
 Metrics names are printed in the following format: `[metrics group id]_[metrics id]`.
 
@@ -18,9 +18,9 @@ Metrics names are printed in the following format: `[metrics group id]_[metrics 
     <thead>
         <tr>
             <th>Metrics group id</th>
-            <th>Description</th>
+            <th width="30%">Description</th>
             <th>Metrics id</th>
-            <th>Description</th>
+            <th width="50%">Description</th>
         </tr>
     </thead>
     <tbody>
@@ -135,29 +135,41 @@ Metrics names are printed in the following format: `[metrics group id]_[metrics 
             </td>
         </tr>
         <tr>
-            <td rowspan=3  align="center">CC-based</td>
-            <td rowspan=3>
+            <td rowspan=5  align="center">CC-based</td>
+            <td rowspan=5>
                 <b>McCabe's cyclomatic complexity based</b><br />
                 Read more about CC: https://en.wikipedia.org/wiki/Cyclomatic_complexity
             </td>
-            <td align="center">CC-ord</td>
+            <td align="center">ord</td>
             <td>
                 Traditional cyclomatic complexity
             </td>
         </tr>
         <tr>
-            <td align="center">CC-rec</td>
+            <td align="center">rec</td>
             <td>
                 CC-ord + [Number of recursive calls]
             </td>
         </tr>
         <tr>
-            <td align="center">CC-mod</td>
+            <td align="center">mod</td>
             <td>
                 Modified cyclomatic complexity. <br/>
                 Like CC-ord but count <br/>
                 <code> match E0 with | P1 -> E1 ... | PN -> EN </code> <br/>
                 as 1 decision point instead of (N - 1) (but still count guards).
+            </td>
+        </tr>
+         <tr>
+            <td align="center">mod-ord-max</td>
+            <td>
+                Maximum of CC-based_ord in module
+            </td>
+        </tr>
+        <tr>
+            <td align="center">mod-ord-avg</td>
+            <td>
+                Average of CC-based_ord in module
             </td>
         </tr>
         <tr>
