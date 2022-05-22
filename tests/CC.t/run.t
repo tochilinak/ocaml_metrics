@@ -5,7 +5,7 @@
   MODULE Test_CC.Functions in Functions.ml
   _____Module_metrics_____
   CC-based_mod-ord-max: 5
-  CC-based_mod-ord-avg: 3.17
+  CC-based_mod-ord-avg: 3.00
   ____Function_metrics____
   FUNCTION f <1:0-1:50> in Functions.ml
   CC-based_ord: 3
@@ -31,3 +31,7 @@
   CC-based_ord: 5
   CC-based_rec: 5
   CC-based_mod: 3
+  FUNCTION pat <25:0-28:27> in Functions.ml
+  CC-based_ord: 2
+  CC-based_rec: 3
+  CC-based_mod: 2

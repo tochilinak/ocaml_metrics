@@ -21,3 +21,9 @@ let m list =
   | x::_ when x < 0 -> "-"
   | _ -> "+"
 ;;
+
+let rec pat list =
+  match list with
+  | [] | [_] -> "0/1"
+  | _::xs -> "1::" ^ pat xs
+;;
