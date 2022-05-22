@@ -64,7 +64,8 @@ Metrics names are printed in the following format: `[metrics group id]_[metrics 
                 <i>Our interpretation:</i>
                 Instead of
                 <img src="https://render.githubusercontent.com/render/math?math=kl"> we use maximum possible number of edges
-                in graph where nodes are functions and edges are used to represent one function calling another.
+                in graph where nodes are functions and edges are used to represent one function calling another. <br/>
+                When denominator is >= 0, LCOM5 is -1.
             </td>
         </tr>
         <tr>
