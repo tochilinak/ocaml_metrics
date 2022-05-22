@@ -4,8 +4,8 @@
   LIBRARY test_halstead
   FILE Functions.ml
   Declared modules:
-  Functions
-  MODULE Functions in Functions.ml
+  Test_halstead.Functions
+  MODULE Test_halstead.Functions in Functions.ml
   Declared functions:
   f <1:0-1:10>
   id <3:0-3:12>

@@ -1,4 +1,4 @@
 (library
  (name test_halstead)
- (wrapped false)
+ (wrapped true)
  (modules functions))

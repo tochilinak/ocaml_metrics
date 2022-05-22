@@ -2,7 +2,7 @@
   $ ocaml_metrics . -met-list LOC | sed -re "/^$/d"
   LIBRARY test_LOC
   FILE Functions.ml
-  MODULE Functions in Functions.ml
+  MODULE Test_LOC.Functions in Functions.ml
   ____Function_metrics____
   FUNCTION f <1:0-6:21> in Functions.ml
   LOC-based_code: 4

@@ -1,4 +1,4 @@
 (library
  (name test_CC)
- (wrapped false)
+ (wrapped true)
  (modules functions))

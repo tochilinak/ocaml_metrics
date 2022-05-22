@@ -10,13 +10,36 @@ type context =
   ; mutable res_mod : int
   ; mutable cur_value_binding : Ident.t option
   ; mutable is_rec : bool
+  ; mutable max_ord : int
+  ; mutable ord_sum : int
+  ; mutable func_num : int
   }
 
 let default_ctx () =
-  { res_simple = 0; res_rec = 0; res_mod = 0; cur_value_binding = None; is_rec = false }
+  { res_simple = 0;
+    res_rec = 0;
+    res_mod = 0;
+    cur_value_binding = None;
+    is_rec = false;
+    max_ord = 0;
+    ord_sum = 0;
+    func_num = 0
+  }
 ;;
 
 let metrics_group_id = "CC-based"
+
+let before_module ctx _ =
+  ctx.ord_sum <- 0;
+  ctx.func_num <- 0;
+  ctx.max_ord <- 0
+;;
+
+let get_module_metrics_result ctx _ =
+  let f = float_of_int in
+  [ "mod-ord-max", Int_result ctx.max_ord
+  ; "mod-ord-avg", Float_result (f ctx.ord_sum /. f ctx.func_num) ]
+;;
 
 let before_function ctx (func_info : function_info) =
   ctx.res_simple <- 1;
@@ -27,9 +50,12 @@ let before_function ctx (func_info : function_info) =
 ;;
 
 let get_function_metrics_result ctx () =
-  [ "CC-ord", Int_result ctx.res_simple
-  ; "CC-rec", Int_result ctx.res_rec
-  ; "CC-mod", Int_result ctx.res_mod
+  ctx.func_num <- ctx.func_num + 1;
+  ctx.ord_sum <- ctx.ord_sum + ctx.res_simple;
+  ctx.max_ord <- max ctx.max_ord ctx.res_simple;
+  [ "ord", Int_result ctx.res_simple
+  ; "rec", Int_result ctx.res_rec
+  ; "mod", Int_result ctx.res_mod
   ]
 ;;
 
@@ -116,6 +142,8 @@ let get_iterator_builder () =
         { (default_iterator_actions ([], [])) with
           begin_of_function = before_function ctx
         ; end_of_function = (fun _ -> get_function_metrics_result ctx (), [])
+        ; begin_of_module = before_module ctx
+        ; end_of_module = (fun _ -> get_module_metrics_result ctx (), [])
         }
     ; run = run ctx
     }
