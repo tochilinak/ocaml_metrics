@@ -110,7 +110,7 @@ let calc_result contexts () =
   let l = ctx.num_of_methods in
   let lcom5 =
     let down = l - e in
-    if down == 0 then 0. else (f @@ (a - e)) /. f down
+    if down >= 0 then -1. else (f @@ (a - e)) /. f down
   in
   let coh = if e == 0 then 1. else f a /. f e in
   [ "COH", Float_result coh

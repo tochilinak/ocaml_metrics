@@ -47,3 +47,21 @@ module F = struct
       print_b ()
   ;;
 end
+
+module G = struct
+  let f1 x = x
+
+  let outer () =
+      let module H = struct
+          let inner () = ()
+          (* no possible arcs *)
+      end
+      in
+      H.inner ();
+      f1 ()
+  ;;
+
+  let f2 () = outer ()
+
+  (* possible arcs: outer -> f1, f2 -> outer, f2 -> f1 *)
+end

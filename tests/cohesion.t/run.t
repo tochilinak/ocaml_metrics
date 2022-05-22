@@ -10,6 +10,8 @@
   Cohesion.D
   Cohesion.D.E
   Cohesion.F
+  Cohesion.G
+  Cohesion.G.<module at 55:21-58:9>
   MODULE Cohesion.A in Cohesion.ml
   _____Module_metrics_____
      cohesion_COH: 0.30
@@ -61,7 +63,7 @@
    cohesion_LCOM1: 1
    cohesion_LCOM2: 1
   cohesion_LCOM34: 2
-   cohesion_LCOM5: 0.00
+   cohesion_LCOM5: -1.00
   Declared functions:
   f <24:2-24:17>
   g <25:2-25:21>
@@ -78,7 +80,7 @@
    cohesion_LCOM1: 0
    cohesion_LCOM2: 0
   cohesion_LCOM34: 1
-   cohesion_LCOM5: 0.00
+   cohesion_LCOM5: -1.00
   Declared functions:
   mod_name <30:2-30:20>
   print_mod_name <31:2-31:48>
@@ -96,7 +98,7 @@
    cohesion_LCOM1: 0
    cohesion_LCOM2: 0
   cohesion_LCOM34: 1
-   cohesion_LCOM5: 0.00
+   cohesion_LCOM5: -1.00
   Declared functions:
   mod_name_E <34:4-34:26>
   print_mod_name <35:4-35:52>
@@ -132,4 +134,40 @@
     "print_b <43:2-43:34>" -> "a,b <41:2-41:21>";
     "<Value on 45:2-47:16>" -> "print_a <42:2-42:34>";
     "<Value on 45:2-47:16>" -> "print_b <43:2-43:34>";
+    }
+  MODULE Cohesion.G in Cohesion.ml
+  _____Module_metrics_____
+     cohesion_COH: 0.67
+   cohesion_LCOM1: 1
+   cohesion_LCOM2: 0
+  cohesion_LCOM34: 1
+   cohesion_LCOM5: -1.00
+  Declared functions:
+  f1 <52:2-52:14>
+  outer <54:2-61:11>
+  f2 <64:2-64:22>
+  _______extra_info_______
+  Maximum possible arcs: 3
+  COHESION GRAPH:
+  digraph G {
+    "f1 <52:2-52:14>";
+    "outer <54:2-61:11>";
+    "f2 <64:2-64:22>";
+    "outer <54:2-61:11>" -> "f1 <52:2-52:14>";
+    "f2 <64:2-64:22>" -> "outer <54:2-61:11>";
+    }
+  MODULE Cohesion.G.<module at 55:21-58:9> in Cohesion.ml
+  _____Module_metrics_____
+     cohesion_COH: 1.00
+   cohesion_LCOM1: 0
+   cohesion_LCOM2: 0
+  cohesion_LCOM34: 1
+   cohesion_LCOM5: -1.00
+  Declared functions:
+  inner <56:10-56:27>
+  _______extra_info_______
+  Maximum possible arcs: 0
+  COHESION GRAPH:
+  digraph G {
+    "inner <56:10-56:27>";
     }
