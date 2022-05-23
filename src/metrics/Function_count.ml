@@ -73,5 +73,5 @@ let get_iterator_builder () =
     ; run = run ctx
     }
   in
-  { default_metrics_group_iterator_builder with cmt = cmt_iterator}
+  { default_metrics_group_iterator_builder with cmt = cmt_iterator }
 ;;

@@ -145,15 +145,24 @@ let begin_of_cmt_module ctx mod_info =
   in
   Stack.push ctx.module_stack (mod_info.mod_name, is_anonymous);
   ctx.all_struct_modules <- Set.add ctx.all_struct_modules mod_info.mod_name;
-  Hashtbl.add_exn
-    ctx.metrics_refs
-    ~key:mod_info.mod_name
-    ~data:(create_metrics_refs metrics_of_modules);
+  (*print_endline mod_info.mod_name;*)
+  let already_was = Hashtbl.mem ctx.metrics_refs mod_info.mod_name in
+  if already_was
+  then
+    Format.eprintf
+      "Warning: several instances of module %s. Might be errors\n"
+      mod_info.mod_name
+  else
+    Hashtbl.add_exn
+      ctx.metrics_refs
+      ~key:mod_info.mod_name
+      ~data:(create_metrics_refs metrics_of_modules);
   if not is_anonymous
   then (
     ctx.struct_modules <- Set.add ctx.struct_modules mod_info.mod_name;
     let filename = String.chop_suffix_exn mod_info.filename ~suffix:".ml" in
-    Hashtbl.add_exn ctx.file_of_module ~key:mod_info.mod_name ~data:filename;
+    if not already_was
+    then Hashtbl.add_exn ctx.file_of_module ~key:mod_info.mod_name ~data:filename;
     ctx.ml_files <- Set.add ctx.ml_files filename)
 ;;
 

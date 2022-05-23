@@ -16,14 +16,14 @@ type context =
   }
 
 let default_ctx () =
-  { res_simple = 0;
-    res_rec = 0;
-    res_mod = 0;
-    cur_value_binding = None;
-    is_rec = false;
-    max_ord = 0;
-    ord_sum = 0;
-    func_num = 0
+  { res_simple = 0
+  ; res_rec = 0
+  ; res_mod = 0
+  ; cur_value_binding = None
+  ; is_rec = false
+  ; max_ord = 0
+  ; ord_sum = 0
+  ; func_num = 0
   }
 ;;
 
@@ -38,7 +38,8 @@ let before_module ctx _ =
 let get_module_metrics_result ctx _ =
   let f = float_of_int in
   [ "mod-ord-max", Int_result ctx.max_ord
-  ; "mod-ord-avg", Float_result (f ctx.ord_sum /. f ctx.func_num) ]
+  ; "mod-ord-avg", Float_result (f ctx.ord_sum /. f ctx.func_num)
+  ]
 ;;
 
 let before_function ctx (func_info : function_info) =
@@ -148,5 +149,5 @@ let get_iterator_builder () =
     ; run = run ctx
     }
   in
-  { default_metrics_group_iterator_builder with cmt = cmt_iterator}
+  { default_metrics_group_iterator_builder with cmt = cmt_iterator }
 ;;

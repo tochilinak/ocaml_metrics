@@ -65,10 +65,9 @@ type 'result iterator_builder =
   }
 
 let default_iterator_builder : type k. k -> k iterator_builder =
-  (fun default_result ->
-    { actions = default_iterator_actions default_result
-    ; run = (fun _ _ x -> x)
-    })
+ fun default_result ->
+  { actions = default_iterator_actions default_result; run = (fun _ _ x -> x) }
+;;
 
 type metrics_group_iterator_builder =
   { (* result for cmt: (metrics_results, extra_info) *)
