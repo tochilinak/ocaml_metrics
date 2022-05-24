@@ -5,6 +5,7 @@
   FILE Functions.ml
   Declared modules:
   Test_halstead.Functions
+  Test_halstead.Functions.<module at 37:17-39:9>
   MODULE Test_halstead.Functions in Functions.ml
   Declared functions:
   f <1:0-1:10>
@@ -17,6 +18,7 @@
   inc <23:0-28:30>
   h <31:0-31:16>
   h1 <33:0-33:37>
+  outer <35:0-41:12>
   ____Function_metrics____
   FUNCTION f <1:0-1:10> in Functions.ml
   Halstead_n: 2
@@ -170,3 +172,35 @@
   < id h1 > used 1 times
   < const 2 > used 1 times
   < const 3 > used 1 times
+  FUNCTION outer <35:0-41:12> in Functions.ml
+  Halstead_n: 8
+  Halstead_N: 11
+  Halstead_V: 33.00
+  Halstead_D: 3.50
+  Halstead_E: 115.50
+  _______extra_info_______
+  operators:
+  < Texp_let > used 1 times
+  < id Stdlib.* > used 1 times
+  < id A.inner > used 1 times
+  < Texp_letmodule > used 1 times
+  operands:
+  < construct () > used 2 times
+  < id x > used 3 times
+  < id outer > used 1 times
+  < id _f > used 1 times
+  MODULE Test_halstead.Functions.<module at 37:17-39:9> in Functions.ml
+  Declared functions:
+  inner <38:6-38:23>
+  ____Function_metrics____
+  FUNCTION inner <38:6-38:23> in Functions.ml
+  Halstead_n: 2
+  Halstead_N: 3
+  Halstead_V: 3.00
+  Halstead_D: 0.00
+  Halstead_E: 0.00
+  _______extra_info_______
+  operators:
+  operands:
+  < id inner > used 1 times
+  < construct () > used 2 times

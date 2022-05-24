@@ -31,3 +31,12 @@ let inc (a, b, c) arr {field=y} =
 let h x = g @@ x
 
 let h1 x = inc (1, 2, 3) [||] @@ id x
+
+let outer () =
+  let _f x = x * x in
+  let module A = struct
+      let inner () = ()
+      end
+  in
+  A.inner ()
+;;

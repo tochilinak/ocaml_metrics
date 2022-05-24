@@ -10,16 +10,21 @@ type context =
   ; mutable last_apply : bool
   }
 
-let default_ctx () =
-  { operand_dictionary = Hashtbl.create (module String)
-  ; operator_dictionary = Hashtbl.create (module String)
-  ; last_apply = false
-  }
+let get_ctx contexts = Stack.top_exn contexts
+
+let before_module contexts _ =
+  Stack.push
+    contexts
+    { operand_dictionary = Hashtbl.create (module String)
+    ; operator_dictionary = Hashtbl.create (module String)
+    ; last_apply = false
+    }
 ;;
 
 let metrics_group_id = "Halstead"
 
-let before_function ctx _ =
+let before_function contexts _ =
+  let ctx = get_ctx contexts in
   Hashtbl.clear ctx.operand_dictionary;
   Hashtbl.clear ctx.operator_dictionary;
   ctx.last_apply <- false
@@ -71,7 +76,8 @@ let calc_total_operands ctx () = calc_total_sum ctx.operand_dictionary
 let calc_dist_operators ctx () = Hashtbl.length ctx.operator_dictionary
 let calc_dist_operands ctx () = Hashtbl.length ctx.operand_dictionary
 
-let get_function_metrics_result ctx () =
+let get_function_metrics_result contexts () =
+  let ctx = get_ctx contexts in
   let dist_operators = calc_dist_operators ctx () in
   let dist_operands = calc_dist_operands ctx () in
   let total_operators = calc_total_operators ctx () in
@@ -94,7 +100,8 @@ let get_function_metrics_result ctx () =
   ]
 ;;
 
-let get_function_extra_info ctx () =
+let get_function_extra_info contexts () =
+  let ctx = get_ctx contexts in
   let get_str_list dict =
     Hashtbl.fold dict ~init:[] ~f:(fun ~key ~data acc ->
         Format.sprintf "< %s > used %d times" key data :: acc)
@@ -232,30 +239,37 @@ let format_construct expr =
   | _ -> false
 ;;
 
-let run ctx _ _ fallback =
+let run contexts _ _ fallback =
   let open Tast_iterator in
   { fallback with
     expr =
       (fun self expr ->
+        let ctx = get_ctx contexts in
         if not (format_construct expr) then process_expression ctx expr;
         fallback.expr self expr)
   ; pat =
       (fun self pat ->
+        let ctx = get_ctx contexts in
         process_pattern ctx pat;
         fallback.pat self pat)
   }
 ;;
 
 let get_iterator_builder () =
-  let ctx = default_ctx () in
+  let contexts = Stack.create () in
   let cmt_iterator =
     { actions =
         { (default_iterator_actions ([], [])) with
-          begin_of_function = before_function ctx
+          begin_of_function = before_function contexts
         ; end_of_function =
-            (fun _ -> get_function_metrics_result ctx (), get_function_extra_info ctx ())
+            (fun _ -> get_function_metrics_result contexts (), get_function_extra_info contexts ())
+        ; begin_of_module = before_module contexts
+        ; end_of_module =
+            (fun _ ->
+               let _ = Stack.pop_exn contexts in
+               [], [] )
         }
-    ; run = run ctx
+    ; run = run contexts
     }
   in
   { default_metrics_group_iterator_builder with cmt = cmt_iterator }
