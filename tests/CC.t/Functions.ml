@@ -27,3 +27,26 @@ let rec pat list =
   | [] | [_] -> "0/1"
   | _::xs -> "1::" ^ pat xs
 ;;
+
+let rec_func x =
+  let rec helper x acc =
+      let _inner_func () = () in
+      if x <= 0 then acc else helper (x - 1) (acc * x)
+  and _g x = if x <= 0 then 0 else _g (x - 1) in
+  helper x 1
+;;
+
+let p x =
+  let p = 1 in
+  x + p
+;;
+
+let outer () =
+  if true then () else ();
+  let module A = struct
+      let inner () = if true then () else ()
+      end
+  in
+  if true then () else ();
+  A.inner
+;;
