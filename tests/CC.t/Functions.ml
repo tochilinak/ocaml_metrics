@@ -33,7 +33,11 @@ let rec_func x =
       let _inner_func () = () in
       if x <= 0 then acc else helper (x - 1) (acc * x)
   and _g x = if x <= 0 then 0 else _g (x - 1) in
-  helper x 1
+  let p x =
+      let p = 1 in
+      x + p
+  in
+  helper x (p (-1))
 ;;
 
 let p x =
