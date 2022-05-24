@@ -20,3 +20,18 @@ let h str =
   | "(*" -> 0
   | _ -> 1
 ;;
+
+let outer () =
+  let module A = struct
+
+      let inner x =
+
+          x * x
+      ;;
+
+      end
+  in
+  (*  *)
+  let _ = A.inner 1 in
+  ()
+;;
