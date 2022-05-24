@@ -47,6 +47,7 @@ let p x =
 
 let outer () =
   if true then () else ();
+  if true then () else ();
   let module A = struct
       let inner () = if true then () else ()
       end

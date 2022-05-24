@@ -11,32 +11,40 @@ type context =
   ; mutable cur_value_binding : Ident.t option
   ; mutable is_rec : bool
   ; mutable let_is_rec : bool
-  ; module_ord_info : (int * int * int) Stack.t (* max, sum, func_num *)
+  ; mutable max_ord : int
+  ; mutable sum_ord : int
+  ; mutable func_num : int
   }
 
-let default_ctx () =
-  { res_simple = 0
-  ; res_rec = 0
-  ; res_mod = 0
-  ; cur_value_binding = None
-  ; is_rec = false
-  ; let_is_rec = false
-  ; module_ord_info = Stack.create ()
-  }
+let get_ctx contexts = Stack.top_exn contexts
+
+let before_module contexts _ =
+  Stack.push
+    contexts
+    { res_simple = 0
+    ; res_rec = 0
+    ; res_mod = 0
+    ; cur_value_binding = None
+    ; is_rec = false
+    ; let_is_rec = false
+    ; max_ord = 0
+    ; sum_ord = 0
+    ; func_num = 0
+    }
 ;;
 
 let metrics_group_id = "CC-based"
-let before_module ctx _ = Stack.push ctx.module_ord_info (0, 0, 0)
 
-let get_module_metrics_result ctx _ =
-  let max_ord, sum_ord, func_num = Stack.pop_exn ctx.module_ord_info in
+let get_module_metrics_result contexts _ =
+  let ctx = get_ctx contexts in
   let f = float_of_int in
-  [ "mod-ord-max", Int_result max_ord
-  ; "mod-ord-avg", Float_result (f sum_ord /. f func_num)
+  [ "mod-ord-max", Int_result ctx.max_ord
+  ; "mod-ord-avg", Float_result (f ctx.sum_ord /. f ctx.func_num)
   ]
 ;;
 
-let before_function ctx (func_info : function_info) =
+let before_function contexts (func_info : function_info) =
+  let ctx = get_ctx contexts in
   ctx.res_simple <- 1;
   ctx.res_rec <- 1;
   ctx.res_mod <- 1;
@@ -44,11 +52,11 @@ let before_function ctx (func_info : function_info) =
   ctx.let_is_rec <- func_info.is_rec
 ;;
 
-let get_function_metrics_result ctx () =
-  let old_max, old_sum, old_func_num = Stack.pop_exn ctx.module_ord_info in
-  Stack.push
-    ctx.module_ord_info
-    (max old_max ctx.res_simple, old_sum + ctx.res_simple, old_func_num + 1);
+let get_function_metrics_result contexts () =
+  let ctx = get_ctx contexts in
+  ctx.max_ord <- max ctx.max_ord ctx.res_simple;
+  ctx.sum_ord <- ctx.sum_ord + ctx.res_simple;
+  ctx.func_num <- ctx.func_num + 1;
   [ "ord", Int_result ctx.res_simple
   ; "rec", Int_result ctx.res_rec
   ; "mod", Int_result ctx.res_mod
@@ -103,30 +111,33 @@ let count_add pat expr =
     ()
 ;;
 
-let count_rec ctx expr =
+let count_rec contexts expr =
+  let ctx = get_ctx contexts in
   let open Typedtree in
   match expr.exp_desc, ctx.cur_value_binding with
   | Texp_ident (Pident x, _, _), Some y when Ident.T.equal x y -> 1
   | _ -> 0
 ;;
 
-let change_let_is_rec ctx expr =
+let change_let_is_rec contexts expr =
+  let ctx = get_ctx contexts in
   let open Typedtree in
   match expr.exp_desc with
   | Texp_let (x, _, _) -> ctx.let_is_rec <- rec_flag_to_bool x
   | _ -> ()
 ;;
 
-let run ctx _ _ fallback =
+let run contexts _ _ fallback =
   let open Tast_iterator in
   let open Typedtree in
   { fallback with
     expr =
       (fun self expr ->
+        let ctx = get_ctx contexts in
         let old_let_is_rec = ctx.let_is_rec in
-        change_let_is_rec ctx expr;
+        change_let_is_rec contexts expr;
         let add_ord = count_add pat_ord expr in
-        let rec_add = if ctx.is_rec then count_rec ctx expr else 0 in
+        let rec_add = if ctx.is_rec then count_rec contexts expr else 0 in
         ctx.res_simple <- ctx.res_simple + add_ord;
         ctx.res_rec <- ctx.res_rec + add_ord + rec_add;
         ctx.res_mod <- ctx.res_mod + count_add pat_mod expr;
@@ -134,6 +145,7 @@ let run ctx _ _ fallback =
         ctx.let_is_rec <- old_let_is_rec)
   ; value_binding =
       (fun self vb ->
+        let ctx = get_ctx contexts in
         let old_vb_name = ctx.cur_value_binding in
         let old_is_rec = ctx.is_rec in
         ctx.cur_value_binding <- get_vb_name_ident vb;
@@ -145,16 +157,20 @@ let run ctx _ _ fallback =
 ;;
 
 let get_iterator_builder () =
-  let ctx = default_ctx () in
+  let contexts = Stack.create () in
   let cmt_iterator =
     { actions =
         { (default_iterator_actions ([], [])) with
-          begin_of_function = before_function ctx
-        ; end_of_function = (fun _ -> get_function_metrics_result ctx (), [])
-        ; begin_of_module = before_module ctx
-        ; end_of_module = (fun _ -> get_module_metrics_result ctx (), [])
+          begin_of_function = before_function contexts
+        ; end_of_function = (fun _ -> get_function_metrics_result contexts (), [])
+        ; begin_of_module = before_module contexts
+        ; end_of_module =
+            (fun _ ->
+              let res = get_module_metrics_result contexts () in
+              let _ = Stack.pop contexts in
+              res, [])
         }
-    ; run = run ctx
+    ; run = run contexts
     }
   in
   { default_metrics_group_iterator_builder with cmt = cmt_iterator }
