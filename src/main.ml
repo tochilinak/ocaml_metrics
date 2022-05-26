@@ -242,7 +242,7 @@ let process_cmt_typedtree filename modname typedtree =
   if analyze_section !cur_section_name
   then (
     if Config.verbose () then printfn "Analyzing file: %s" filename;
-    Format.printf "Typedtree ML:\n%a\n%!" Printtyped.implementation typedtree;
+    (*Format.printf "Typedtree ML:\n%a\n%!" Printtyped.implementation typedtree;*)
     let cut_filename = cut_build_dir filename in
     CollectedMetrics.add_file (get_cur_section ()) cut_filename;
     let file_content =
