@@ -58,6 +58,6 @@ jobs:
           opam exec -- dune build
       - name: Running tests...
         run: |
-          opam exec -- dune runtest
+          opam exec -- dune runtest --force
 
 #
