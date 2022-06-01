@@ -5,7 +5,14 @@
 
 (library
  (name zanuda_core)
- (modules Utils METRIC My_Tast_iterator CollectedMetrics LoadDune Config)
+ (modules
+  Utils
+  METRIC
+  My_Tast_iterator
+  CollectedMetrics
+  LoadDune
+  Config
+  Build_iterators)
  (libraries ppxlib sexplib yojson Tast_pattern ocamlgraph)
  (preprocess
   (pps ppx_optcomp ppx_sexp_conv ppx_inline_test))
