@@ -262,12 +262,13 @@ let get_iterator_builder () =
         { (default_iterator_actions ([], [])) with
           begin_of_function = before_function contexts
         ; end_of_function =
-            (fun _ -> get_function_metrics_result contexts (), get_function_extra_info contexts ())
+            (fun _ ->
+              get_function_metrics_result contexts (), get_function_extra_info contexts ())
         ; begin_of_module = before_module contexts
         ; end_of_module =
             (fun _ ->
-               let _ = Stack.pop_exn contexts in
-               [], [] )
+              let _ = Stack.pop_exn contexts in
+              [], [])
         }
     ; run = run contexts
     }

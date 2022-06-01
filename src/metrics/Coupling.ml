@@ -30,6 +30,7 @@ let only_public_module_metrics = [ fan_out; fan_in; apiu ]
 type context =
   { mutable cur_executable : string option
   ; module_stack : (string * bool) Stack.t
+  ; mutable root_module : string option
   ; mutable cur_function : string
   ; module_of_ident : string Ident_Hashtbl.t
   ; mutable struct_modules :
@@ -78,6 +79,7 @@ let create_metrics_refs metrics_names =
 let default_ctx () =
   { cur_executable = None
   ; module_stack = Stack.create ()
+  ; root_module = None
   ; cur_function = ""
   ; module_of_ident = Ident_Hashtbl.create 10
   ; struct_modules = Set.empty (module String)
@@ -100,6 +102,7 @@ let cur_module ctx = fst @@ Stack.top_exn ctx.module_stack
 let cur_module_is_anonymous ctx = snd @@ Stack.top_exn ctx.module_stack
 
 let rec path_name ctx path =
+  let scope_of_non_module = 100000000 in
   let open Path in
   match path with
   | Pident id ->
@@ -117,7 +120,13 @@ let rec path_name ctx path =
       else name)
     else (
       match Ident_Hashtbl.find_opt ctx.module_of_ident id with
-      | None -> cur_module ctx ^ "." ^ Ident.name id
+      | None ->
+        let modname =
+          if Ident.scope id < scope_of_non_module
+          then Option.value_exn ctx.root_module
+          else cur_module ctx
+        in
+        modname ^ "." ^ Ident.name id
       | Some x -> x ^ "." ^ Ident.name id)
   | Pdot (p, s) ->
     let further = path_name ctx p in
@@ -143,6 +152,7 @@ let begin_of_cmt_module ctx mod_info =
     mod_info.is_anonymous
     || ((not (Stack.is_empty ctx.module_stack)) && cur_module_is_anonymous ctx)
   in
+  if Stack.is_empty ctx.module_stack then ctx.root_module <- Some mod_info.mod_name;
   Stack.push ctx.module_stack (mod_info.mod_name, is_anonymous);
   ctx.all_struct_modules <- Set.add ctx.all_struct_modules mod_info.mod_name;
   (*print_endline mod_info.mod_name;*)

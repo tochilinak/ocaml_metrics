@@ -1,3 +1,0 @@
-(library
-  (name strange_cases)
-  (modules non_api_calls))
