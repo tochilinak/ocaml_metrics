@@ -1,6 +1,5 @@
 open Base
 open Caml.Format
-open Utils
 
 type module_ =
   { name : string
