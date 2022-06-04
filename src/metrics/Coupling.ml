@@ -30,7 +30,6 @@ let only_public_module_metrics = [ fan_out; fan_in; apiu ]
 type context =
   { mutable cur_executable : string option
   ; module_stack : (string * bool) Stack.t
-  ; mutable root_module : string option
   ; mutable cur_function : string
   ; module_of_ident : string Ident_Hashtbl.t
   ; mutable struct_modules :
@@ -61,6 +60,7 @@ type context =
       (string, (string, (metric_result option * bool) ref) Hashtbl.t) Hashtbl.t
         (* key: modname *)
   ; module_call_graph : MyDigraph.t
+  ; module_by_scope : (int, string) Hashtbl.t (* key: scope, data: modname *)
   }
 
 let create_metrics_refs metrics_names =
@@ -79,7 +79,6 @@ let create_metrics_refs metrics_names =
 let default_ctx () =
   { cur_executable = None
   ; module_stack = Stack.create ()
-  ; root_module = None
   ; cur_function = ""
   ; module_of_ident = Ident_Hashtbl.create 10
   ; struct_modules = Set.empty (module String)
@@ -95,6 +94,7 @@ let default_ctx () =
   ; mli_files = Set.empty (module String)
   ; metrics_refs = Hashtbl.create (module String)
   ; module_call_graph = MyDigraph.create ()
+  ; module_by_scope = Hashtbl.create (module Int)
   }
 ;;
 
@@ -119,15 +119,18 @@ let rec path_name ctx path =
         exe_name ^ String.chop_prefix_exn ~prefix:"Dune__exe" name)
       else name)
     else (
-      match Ident_Hashtbl.find_opt ctx.module_of_ident id with
-      | None ->
-        let modname =
-          if Ident.scope id < scope_of_non_module
-          then Option.value_exn ctx.root_module
-          else cur_module ctx
-        in
-        modname ^ "." ^ Ident.name id
-      | Some x -> x ^ "." ^ Ident.name id)
+      let modname =
+        let scope = Ident.scope id in
+        if scope != scope_of_non_module
+        then
+          Hashtbl.find_or_add ctx.module_by_scope scope ~default:(fun () ->
+              cur_module ctx)
+        else (
+          match Ident_Hashtbl.find_opt ctx.module_of_ident id with
+          | None -> cur_module ctx
+          | Some x -> x)
+      in
+      modname ^ "." ^ Ident.name id)
   | Pdot (p, s) ->
     let further = path_name ctx p in
     if String.equal further "" then s else further ^ "." ^ s
@@ -152,7 +155,13 @@ let begin_of_cmt_module ctx mod_info =
     mod_info.is_anonymous
     || ((not (Stack.is_empty ctx.module_stack)) && cur_module_is_anonymous ctx)
   in
-  if Stack.is_empty ctx.module_stack then ctx.root_module <- Some mod_info.mod_name;
+  let old_modname = if Stack.is_empty ctx.module_stack then "" else cur_module ctx in
+  if Stack.is_empty ctx.module_stack
+  then (
+    Hashtbl.clear ctx.module_by_scope;
+    Ident_Hashtbl.clear ctx.module_of_ident);
+  Option.iter mod_info.scope ~f:(fun x ->
+      Hashtbl.update ctx.module_by_scope x ~f:(fun _ -> old_modname));
   Stack.push ctx.module_stack (mod_info.mod_name, is_anonymous);
   ctx.all_struct_modules <- Set.add ctx.all_struct_modules mod_info.mod_name;
   (*print_endline mod_info.mod_name;*)

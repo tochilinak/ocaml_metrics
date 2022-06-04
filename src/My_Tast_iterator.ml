@@ -11,6 +11,7 @@ type iterator_context =
   ; actions : unit METRIC.iterator_actions
   ; mutable inside_module_binding : bool (* default: false *)
   ; mutable module_binding_name : string (* default: "" *)
+  ; mutable module_binding_scope : int option (* default: None *)
   ; mutable in_root : bool (* default: true *)
   }
 
@@ -20,6 +21,7 @@ let make_iterator_context ~filename ~cur_module ~actions =
   ; actions
   ; inside_module_binding = false
   ; module_binding_name = ""
+  ; module_binding_scope = None
   ; in_root = true
   }
 ;;
@@ -76,23 +78,26 @@ let my_module_expr ctx self mod_expr =
         if ctx.inside_module_binding
         then (
           ctx.inside_module_binding <- false;
-          Some (ctx.module_binding_name, false))
+          Some (ctx.module_binding_name, false, ctx.module_binding_scope))
         else
           Some
             ( ctx.cur_module
               ^ Format.sprintf ".<module at %s>"
               @@ short_location_str mod_loc
-            , true )
+            , true
+            , None )
       | Tmod_functor _ | Tmod_constraint _ -> None
       | _ ->
         ctx.inside_module_binding <- false;
         None)
   in
   match get_module_name mod_expr with
-  | Some (x, is_anonymous) ->
+  | Some (x, is_anonymous, scope) ->
     let old_modname = ctx.cur_module in
     ctx.cur_module <- x;
-    let mod_info = { mod_name = ctx.cur_module; filename = ctx.filename; is_anonymous } in
+    let mod_info =
+      { mod_name = ctx.cur_module; filename = ctx.filename; is_anonymous; scope }
+    in
     ctx.actions.begin_of_module mod_info;
     default_iterator.module_expr self mod_expr;
     ctx.actions.end_of_module mod_info;
@@ -104,6 +109,7 @@ let my_module_binding ctx self mb =
   match mb.mb_id with
   | None -> default_iterator.module_binding self mb
   | Some x ->
+    ctx.module_binding_scope <- Some (Ident.scope x);
     ctx.module_binding_name <- ctx.cur_module ^ "." ^ Ident.name x;
     ctx.inside_module_binding <- true;
     default_iterator.module_binding self mb
@@ -114,7 +120,11 @@ let my_structure ctx self str =
   then (
     ctx.in_root <- false;
     let mod_info =
-      { mod_name = ctx.cur_module; filename = ctx.filename; is_anonymous = false }
+      { mod_name = ctx.cur_module
+      ; filename = ctx.filename
+      ; is_anonymous = false
+      ; scope = Some 0
+      }
     in
     ctx.actions.begin_of_module mod_info;
     default_iterator.structure self str;

@@ -187,10 +187,12 @@
   digraph G {
     "Test_ext.B";
     "Test_ext";
+    "Test_ext.A.D";
     "Test_ext.A.E";
     "Test_ext.C";
     "Test_ext.A";
     "Test_ext.B" -> "Test_ext.A" [label="1", ];
+    "Test_ext.A.D" -> "Test_ext.A.E" [label="1", ];
     "Test_ext.A.E" -> "Test_ext.A" [label="1", ];
     "Test_ext.C" -> "Test_ext.A" [label="1", ];
     "Test_ext.C" -> "Test_ext.B" [label="1", ];
@@ -200,6 +202,7 @@
   Declared modules:
   Test_ext.A
   Test_ext.A.E
+  Test_ext.A.D
   Test_ext.B
   Test_ext.C
   MODULE Test_ext.A in strange_cases/test_ext/test_ext.ml
@@ -207,7 +210,7 @@
   coupling_Fan-out: 0
    coupling_Fan-in: 3
      coupling_APIU: 0.50
-       coupling_AC: 0.25
+       coupling_AC: 0.40
       coupling_EXT: 0
   Declared functions:
   a1 <2:2-2:16>
@@ -224,8 +227,8 @@
   MODULE Test_ext.A.E in strange_cases/test_ext/test_ext.ml
   _____Module_metrics_____
   coupling_Fan-out: 1
-   coupling_Fan-in: 0
-     coupling_APIU: 0.00
+   coupling_Fan-in: 1
+     coupling_APIU: 1.00
        coupling_AC: 0.00
       coupling_EXT: 1
   Declared functions:
@@ -236,6 +239,21 @@
   _______extra_info_______
   Called from function:
   Test_ext.A.a1
+  MODULE Test_ext.A.D in strange_cases/test_ext/test_ext.ml
+  _____Module_metrics_____
+  coupling_Fan-out: 1
+   coupling_Fan-in: 0
+     coupling_APIU: 0.00
+       coupling_AC: 0.00
+      coupling_EXT: 1
+  Declared functions:
+  d1 <10:4-10:17>
+  ____Function_metrics____
+  FUNCTION d1 <10:4-10:17> in strange_cases/test_ext/test_ext.ml
+  coupling_EXT: 1
+  _______extra_info_______
+  Called from function:
+  Test_ext.A.E.e1
   MODULE Test_ext.B in strange_cases/test_ext/test_ext.ml
   _____Module_metrics_____
   coupling_Fan-out: 1
@@ -244,15 +262,15 @@
        coupling_AC: 0.00
       coupling_EXT: 1
   Declared functions:
-  b1 <11:2-11:15>
-  b2 <12:2-12:15>
+  b1 <15:2-15:15>
+  b2 <16:2-16:15>
   ____Function_metrics____
-  FUNCTION b1 <11:2-11:15> in strange_cases/test_ext/test_ext.ml
+  FUNCTION b1 <15:2-15:15> in strange_cases/test_ext/test_ext.ml
   coupling_EXT: 1
   _______extra_info_______
   Called from function:
   Test_ext.A.a1
-  FUNCTION b2 <12:2-12:15> in strange_cases/test_ext/test_ext.ml
+  FUNCTION b2 <16:2-16:15> in strange_cases/test_ext/test_ext.ml
   coupling_EXT: 1
   _______extra_info_______
   Called from function:
@@ -265,23 +283,23 @@
        coupling_AC: 0.33
       coupling_EXT: 2
   Declared functions:
-  c1 <16:2-16:32>
-  c2 <17:2-17:15>
-  c3 <18:2-18:15>
+  c1 <20:2-20:32>
+  c2 <21:2-21:15>
+  c3 <22:2-22:15>
   ____Function_metrics____
-  FUNCTION c1 <16:2-16:32> in strange_cases/test_ext/test_ext.ml
+  FUNCTION c1 <20:2-20:32> in strange_cases/test_ext/test_ext.ml
   coupling_EXT: 0
   _______extra_info_______
   Called from function:
   Stdlib.List.iter
   Test_ext.C.f
   Test_ext.C.lst
-  FUNCTION c2 <17:2-17:15> in strange_cases/test_ext/test_ext.ml
+  FUNCTION c2 <21:2-21:15> in strange_cases/test_ext/test_ext.ml
   coupling_EXT: 1
   _______extra_info_______
   Called from function:
   Test_ext.B.b2
-  FUNCTION c3 <18:2-18:15> in strange_cases/test_ext/test_ext.ml
+  FUNCTION c3 <22:2-22:15> in strange_cases/test_ext/test_ext.ml
   coupling_EXT: 1
   _______extra_info_______
   Called from function:

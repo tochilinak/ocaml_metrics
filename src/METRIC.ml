@@ -16,6 +16,7 @@ type module_info =
   { mod_name : string
   ; filename : string
   ; is_anonymous : bool
+  ; scope : int option
   }
 
 type function_sig_info = { fun_sig_name : Ident.t }

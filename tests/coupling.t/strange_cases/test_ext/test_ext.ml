@@ -5,6 +5,10 @@ module A = struct
   module E = struct
     let e1 = a1
   end
+
+  module D = struct
+    let d1 = E.e1
+  end
 end
 
 module B = struct

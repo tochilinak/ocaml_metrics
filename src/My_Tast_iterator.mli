@@ -6,6 +6,7 @@ type iterator_context =
   ; actions : unit METRIC.iterator_actions
   ; mutable inside_module_binding : bool (* default: false *)
   ; mutable module_binding_name : string (* default: "" *)
+  ; mutable module_binding_scope : int option (* default: None *)
   ; mutable in_root : bool (* default: true *)
   }
 
