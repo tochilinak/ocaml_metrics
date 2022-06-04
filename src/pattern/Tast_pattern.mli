@@ -21,6 +21,7 @@ val __ : ('a, 'a -> 'b, 'b) t
 val __' : ('a, 'a Location.loc -> 'b, 'b) t
 
 val drop : ('a, 'b, 'b) t
+val reject : ('a, 'b, 'c) t
 val nil : ('a list, 'b, 'b) t
 val ( ^:: ) : ('a, 'b, 'c) t -> ('a list, 'c, 'd) t -> ('a list, 'b, 'd) t
 val none : ('a option, 'b, 'b) t
@@ -57,6 +58,7 @@ val map_result : ('a, 'b, 'c) t -> f:('c -> 'd) -> ('a, 'b, 'd) t
 
 open Typedtree
 
+val cst : to_string:('a -> string) -> ?equal:('a -> 'a -> bool) -> 'a -> ('a, 'b, 'b) t
 val int : int -> (int, 'a, 'a) t
 val string : string -> (string, 'a, 'a) t
 val lident : (string, 'a, 'b) t -> (Longident.t, 'a, 'b) t
@@ -65,6 +67,7 @@ val path_pident : (Ident.t, 'a, 'b) t -> (Path.t, 'a, 'b) t
 val eint : (int, 'a, 'b) t -> (expression, 'a, 'b) t
 val ebool : (expression, bool -> 'a, 'a) t
 val econst : (Asttypes.constant, 'a, 'b) t -> (expression, 'a, 'b) t
+val const_to_string : Asttypes.constant -> string
 
 [%%if ocaml_version < (4, 11, 0)]
 
@@ -72,6 +75,7 @@ type case_val = Typedtree.case
 type case_comp = Typedtree.case
 type value_pat = pattern
 type comp_pat = pattern
+type 'k gen_pat = pattern
 
 [%%else]
 
@@ -79,11 +83,19 @@ type case_val = value case
 type case_comp = computation case
 type value_pat = value pattern_desc pattern_data
 type comp_pat = computation pattern_desc pattern_data
+type 'k gen_pat = 'k general_pattern
 
 [%%endif]
 
+type my_general_pattern =
+  | Value of value_pat
+  | Computation of comp_pat
+  | Or_pattern
+
+val convert_gen_pat : 'k gen_pat -> my_general_pattern
 val nolabel : (Asttypes.arg_label, 'a, 'a) t
 val tpat_var : (string, 'a, 'b) t -> (pattern, 'a, 'b) t
+val tpat_var_ident : (Ident.t, 'a, 'b) t -> (pattern, 'a, 'b) t
 val tpat_exception : (value_pat, 'a, 'b) t -> (comp_pat, 'a, 'b) t
 val tpat_any : (value_pat, 'a, 'a) t
 val pident : (string, 'a, 'b) t -> (Path.t, 'a, 'b) t
@@ -94,6 +106,18 @@ val pident : (string, 'a, 'b) t -> (Path.t, 'a, 'b) t
     texp_ident (path [ "&&" ])  (* WRONG *)
     texp_ident (path [ "Stdlib"; "&&" ])  (* CORRECT *)
 *)
+
+val pconst : (Asttypes.constant, 'a, 'b) t -> (value_pat, 'a, 'b) t
+
+val tpat_construct_empty
+  :  (Types.constructor_description, 'a, 'b) t
+  -> (value_pat, 'a, 'b) t
+
+val texp_construct_empty
+  :  (Types.constructor_description, 'a, 'b) t
+  -> (expression, 'a, 'b) t
+
+val tpat_alias : (string, 'a, 'b) t -> (pattern, 'a, 'b) t
 val texp_ident : (Path.t, 'a, 'b) t -> (expression, 'a, 'b) t
 
 val texp_ident_typ
@@ -123,9 +147,7 @@ val texp_apply_nolabelled
   -> (expression, 'a, 'c) t
 
 val texp_function : (case_val list, 'a, 'b) t -> (expression, 'a, 'b) t
-
 val pat_type : (pattern, Types.type_expr -> 'a, 'a) t
-
 val exp_type : (expression, Types.type_expr -> 'a, 'a) t
 
 val case
@@ -146,6 +168,9 @@ val texp_ite
   -> (expression, 'b, 'c) t
   -> (expression option, 'c, 'd) t
   -> (expression, 'a, 'd) t
+
+val texp_while : (expression, 'a, 'a) t
+val texp_for : (expression, 'a, 'a) t
 
 val texp_try
   :  (expression, 'a, 'b) t
@@ -169,6 +194,8 @@ val rld_overriden
   :  (Longident.t, 'a, 'b) t
   -> (expression, 'b, 'c) t
   -> (record_label_definition, 'a, 'c) t
+
+val tmod_ident : (Path.t, 'a, 'b) t -> (module_expr, 'a, 'b) t
 
 val typ_constr
   :  (Path.t, 'a, 'b) t

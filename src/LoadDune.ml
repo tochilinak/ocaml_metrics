@@ -1,6 +1,5 @@
 open Base
 open Caml.Format
-open Utils
 
 type module_ =
   { name : string
@@ -43,7 +42,7 @@ let fine_module { impl } =
   | _ -> true
 ;;
 
-let analyze_dir ~cmt:analyze_cmt ~cmti:analyze_cmti path =
+let analyze_dir ~cmt:analyze_cmt ~cmti:analyze_cmti ~on_exe ~on_lib path =
   Unix.chdir path;
   let s =
     let ch = Unix.open_process_in "dune describe" in
@@ -61,16 +60,24 @@ let analyze_dir ~cmt:analyze_cmt ~cmti:analyze_cmti path =
   let on_module _ m =
     let on_cmti source_file (_cmi_info, cmt_info) =
       Option.iter cmt_info ~f:(fun cmt ->
+          let modname =
+            String.substr_replace_all ~pattern:"__" ~with_:"."
+            @@ String.chop_prefix_if_exists
+                 cmt.Cmt_format.cmt_modname
+                 ~prefix:"Dune__exe__"
+          in
           match cmt.Cmt_format.cmt_annots with
-          | Cmt_format.Implementation stru -> analyze_cmt source_file stru
-          | Cmt_format.Interface sign -> analyze_cmti source_file sign
+          | Cmt_format.Implementation stru -> analyze_cmt source_file modname stru
+          | Cmt_format.Interface sign -> analyze_cmti source_file modname sign
           | Cmt_format.Packed _
           | Cmt_format.Partial_implementation _
           | Cmt_format.Partial_interface _ ->
             printf "%s %d\n%!" Caml.__FILE__ Caml.__LINE__;
             Caml.exit 1)
     in
-    List.iter [ m.impl, m.cmt; m.intf, m.cmti ] ~f:(function
+    List.iter
+      [ m.impl, m.cmt; m.intf, m.cmti ]
+      ~f:(function
         | None, None -> ()
         | Some filename, None ->
           Caml.Format.printf "Found ml[i] file '%s' without cmt[i] file\n" filename
@@ -95,7 +102,7 @@ let analyze_dir ~cmt:analyze_cmt ~cmti:analyze_cmti path =
               else
                 fun _ ->
                 eprintf
-                  "File '%s' doesn't exist. Maybe some of source files are not compiled?"
+                  "File '%s' doesn't exist. Maybe some of source files are not compiled?\n"
                   source_filename
             else
               fun f ->
@@ -106,20 +113,33 @@ let analyze_dir ~cmt:analyze_cmt ~cmti:analyze_cmti path =
   in
   let loop_database () =
     List.iter db ~f:(function
-        | Executables { modules; requires } ->
+        | Executables { modules; requires; names } ->
           let extra_paths =
             requires
             |> List.filter_map ~f:(fun uid -> get_library uid)
             |> List.concat_map ~f:(fun { Library.include_dirs } -> include_dirs)
           in
-          List.iter modules ~f:(fun m -> if fine_module m then on_module extra_paths m)
-        | Library { Library.modules; requires } ->
+          if List.exists modules ~f:fine_module
+          then
+            if List.length names != 1
+            then (
+              eprintf "Warning: several executables: ";
+              List.iter names ~f:(eprintf "%s ");
+              eprintf "\nSkipping...\n")
+            else (
+              on_exe @@ List.nth_exn names 0;
+              List.iter modules ~f:(fun m ->
+                  if fine_module m then on_module extra_paths m))
+        | Library { Library.modules; Library.name; requires } ->
           let extra_paths =
             requires
             |> List.filter_map ~f:(fun uid -> get_library uid)
             |> List.concat_map ~f:(fun { Library.include_dirs } -> include_dirs)
           in
-          List.iter modules ~f:(fun m -> if fine_module m then on_module extra_paths m))
+          if List.exists modules ~f:fine_module
+          then (
+            on_lib name;
+            List.iter modules ~f:(fun m -> if fine_module m then on_module extra_paths m)))
   in
   loop_database ()
 ;;

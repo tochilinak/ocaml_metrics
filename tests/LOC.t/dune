@@ -1,0 +1,4 @@
+(library
+ (name test_LOC)
+ (wrapped true)
+ (modules functions))

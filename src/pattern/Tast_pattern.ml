@@ -92,6 +92,8 @@ let drop : 'a 'b. ('a, 'b, 'b) t =
       k)
 ;;
 
+let reject = T (fun _ loc _ _ -> fail loc "reject")
+
 let cst ~to_string ?(equal = Poly.equal) v =
   T
     (fun ctx loc x k ->
@@ -315,6 +317,36 @@ end
 
 open Typedtree
 
+[%%if ocaml_version < (4, 11, 0)]
+
+let const_to_string =
+  let open Asttypes in
+  function
+  | Const_int v -> Int.to_string v
+  | Const_char v -> Printf.sprintf "%C" v
+  | Const_string (v, _) -> "\"" ^ v ^ "\""
+  | Const_float v -> v
+  | Const_int32 v -> Int32.to_string v
+  | Const_int64 v -> Int64.to_string v
+  | Const_nativeint v -> Nativeint.to_string v
+;;
+
+[%%else]
+
+let const_to_string =
+  let open Asttypes in
+  function
+  | Const_int v -> Int.to_string v
+  | Const_char v -> Printf.sprintf "%C" v
+  | Const_string (v, _, _) -> "\"" ^ v ^ "\""
+  | Const_float v -> v
+  | Const_int32 v -> Int32.to_string v
+  | Const_int64 v -> Int64.to_string v
+  | Const_nativeint v -> Nativeint.to_string v
+;;
+
+[%%endif]
+
 let econst (T f0) =
   T
     (fun ctx loc x k ->
@@ -323,6 +355,16 @@ let econst (T f0) =
         ctx.matched <- ctx.matched + 1;
         f0 ctx loc n k
       | _ -> fail loc (sprintf "econst"))
+;;
+
+let pconst (T f0) =
+  T
+    (fun ctx loc x k ->
+      match x.pat_desc with
+      | Tpat_constant n ->
+        ctx.matched <- ctx.matched + 1;
+        f0 ctx loc n k
+      | _ -> fail loc (sprintf "pconst"))
 ;;
 
 let eint (T f0) =
@@ -361,6 +403,16 @@ let tpat_var (T fname) =
       | _ -> fail loc "tpat_var")
 ;;
 
+let tpat_var_ident (T fident) =
+  T
+    (fun ctx loc x k ->
+      match x.pat_desc with
+      | Tpat_var (x, _) ->
+        ctx.matched <- ctx.matched + 1;
+        k |> fident ctx loc x
+      | _ -> fail loc "tpat_var_ident")
+;;
+
 let tpat_exception (T fpat) =
   T
     (fun ctx loc x k ->
@@ -379,6 +431,36 @@ let tpat_any =
         ctx.matched <- ctx.matched + 1;
         k
       | _ -> fail loc "tpat_any")
+;;
+
+let tpat_construct_empty (T fconstr_desc) =
+  T
+    (fun ctx loc x k ->
+      match x.pat_desc with
+      | Tpat_construct (_, desc, []) ->
+        ctx.matched <- ctx.matched + 1;
+        k |> fconstr_desc ctx loc desc
+      | _ -> fail loc "tpat_construct_empty")
+;;
+
+let tpat_alias (T fname) =
+  T
+    (fun ctx loc x k ->
+      match x.pat_desc with
+      | Tpat_alias (_, _, { txt }) ->
+        ctx.matched <- ctx.matched + 1;
+        k |> fname ctx loc txt
+      | _ -> fail loc "tpat_alias")
+;;
+
+let texp_construct_empty (T fconstr_desc) =
+  T
+    (fun ctx loc x k ->
+      match x.exp_desc with
+      | Texp_construct (_, desc, []) ->
+        ctx.matched <- ctx.matched + 1;
+        k |> fconstr_desc ctx loc desc
+      | _ -> fail loc "texp_construct_empty")
 ;;
 
 let texp_ident (T fpath) =
@@ -464,6 +546,7 @@ type case_val = Typedtree.case
 type case_comp = Typedtree.case
 type value_pat = pattern
 type comp_pat = pattern
+type 'k gen_pat = pattern
 
 [%%else]
 
@@ -471,6 +554,53 @@ type case_val = value case
 type case_comp = computation case
 type value_pat = value pattern_desc pattern_data
 type comp_pat = computation pattern_desc pattern_data
+type 'k gen_pat = 'k general_pattern
+
+[%%endif]
+
+type my_general_pattern =
+  | Value of value_pat
+  | Computation of comp_pat
+  | Or_pattern
+
+[%%if ocaml_version < (4, 11, 2)]
+
+let convert_gen_pat : type k. k gen_pat -> my_general_pattern =
+ fun x ->
+  match x.pat_desc with
+  | Tpat_any -> Value x
+  | Tpat_var _ -> Value x
+  | Tpat_constant _ -> Value x
+  | Tpat_tuple _ -> Value x
+  | Tpat_construct _ -> Value x
+  | Tpat_variant _ -> Value x
+  | Tpat_record _ -> Value x
+  | Tpat_array _ -> Value x
+  | Tpat_alias _ -> Value x
+  | Tpat_lazy _ -> Value x
+  | Tpat_exception _ -> Computation x
+  | Tpat_or _ -> Or_pattern
+;;
+
+[%%else]
+
+let convert_gen_pat : type k. k gen_pat -> my_general_pattern =
+ fun x ->
+  match x.pat_desc with
+  | Tpat_any -> Value x
+  | Tpat_var _ -> Value x
+  | Tpat_constant _ -> Value x
+  | Tpat_tuple _ -> Value x
+  | Tpat_construct _ -> Value x
+  | Tpat_variant _ -> Value x
+  | Tpat_record _ -> Value x
+  | Tpat_array _ -> Value x
+  | Tpat_alias _ -> Value x
+  | Tpat_lazy _ -> Value x
+  | Tpat_value _ -> Computation x
+  | Tpat_exception _ -> Computation x
+  | Tpat_or _ -> Or_pattern
+;;
 
 [%%endif]
 
@@ -489,12 +619,14 @@ let pat_type =
     (fun ctx _ { pat_type } k ->
       ctx.matched <- ctx.matched + 1;
       k pat_type)
+;;
 
 let exp_type =
   T
     (fun ctx _ { exp_type } k ->
       ctx.matched <- ctx.matched + 1;
       k exp_type)
+;;
 
 let case (T pat) (T guard) (T rhs) =
   T
@@ -506,8 +638,9 @@ let first_case (T fcase) =
   T
     (fun ctx loc lst k ->
       match lst with
-      | x::_ -> fcase ctx loc x k
+      | x :: _ -> fcase ctx loc x k
       | [] -> fail loc "first_case")
+;;
 
 let texp_match (T fexpr) (T fcases) =
   T
@@ -527,6 +660,26 @@ let texp_ite (T pred) (T fthen) (T felse) =
         ctx.matched <- ctx.matched + 1;
         k |> pred ctx loc p |> fthen ctx loc thenb |> felse ctx loc elseb
       | _ -> fail loc "texp_ite")
+;;
+
+let texp_while =
+  T
+    (fun ctx loc e k ->
+      match e.exp_desc with
+      | Texp_while _ ->
+        ctx.matched <- ctx.matched + 1;
+        k
+      | _ -> fail loc "texp_while")
+;;
+
+let texp_for =
+  T
+    (fun ctx loc e k ->
+      match e.exp_desc with
+      | Texp_for _ ->
+        ctx.matched <- ctx.matched + 1;
+        k
+      | _ -> fail loc "texp_for")
 ;;
 
 let texp_try (T fexpr) (T fcases) =
@@ -586,6 +739,16 @@ let rld_overriden (T flident) (T fexpr) =
         ctx.matched <- ctx.matched + 1;
         k |> flident ctx loc lident |> fexpr ctx loc e
       | _ -> fail loc "rld_overriden")
+;;
+
+let tmod_ident (T fpath) =
+  T
+    (fun ctx loc e k ->
+      match e.mod_desc with
+      | Tmod_ident (x, _) ->
+        ctx.matched <- ctx.matched + 1;
+        k |> fpath ctx loc x
+      | _ -> fail loc "tmod_ident")
 ;;
 
 (*   let hack0 (T path0) =

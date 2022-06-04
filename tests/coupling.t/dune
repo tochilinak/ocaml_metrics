@@ -1,0 +1,10 @@
+(library
+ (name test_coupling_algorithm)
+ (wrapped false)
+ (libraries base)
+ (modules Graph Algo))
+
+(executable
+  (name usage)
+  (modules Usage)
+  (libraries test_coupling_algorithm))

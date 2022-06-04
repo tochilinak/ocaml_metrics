@@ -1,8 +1,14 @@
 (library
  (name Metrics)
- (libraries zanuda_core Tast_pattern)
+ (libraries zanuda_core Tast_pattern ocamlgraph)
  (modules
-  Function_count)
+  Function_count
+  Halstead
+  LOC
+  CyclomaticComplexity
+  Cohesion
+  Coupling
+  test)
  (preprocess
-  (pps ppx_inline_test ppxlib.metaquot))
+  (pps ppx_inline_test ppx_assert ppxlib.metaquot))
  (inline_tests))

@@ -7,23 +7,24 @@
  (name zanuda_core)
  (modules
   Utils
-  ;
   METRIC
-  Config
+  My_Tast_iterator
   CollectedMetrics
-  LoadDune)
- (modules_without_implementation METRIC)
- (libraries ppxlib sexplib yojson Tast_pattern)
+  LoadDune
+  Config
+  Build_iterators)
+ (libraries ppxlib sexplib yojson Tast_pattern ocamlgraph)
  (preprocess
   (pps ppx_optcomp ppx_sexp_conv ppx_inline_test))
  (inline_tests))
 
 (executable
  (name main)
- (public_name mylinter)
+ (public_name ocaml_metrics)
  (modules main)
  (libraries
   base
+  stdio
   yojson
   ppxlib
   compiler-libs.common
@@ -31,5 +32,5 @@
   zanuda_core
   Metrics)
  (preprocess
-  (pps ppx_inline_test))
- (package mylinter))
+  (pps ppx_optcomp ppx_sexp_conv ppx_inline_test))
+ (package ocaml_metrics))
